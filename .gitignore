@@ -78,3 +78,14 @@ alembic/versions/__pycache__/
 
 # Cursor
 .cursor/
+
+# SSH deploy key (private)
+infra/deploy_key
+
+# SSL Certificates (Cloudflare Origin Certificates)
+infra/origin.pem
+infra/origin.key
+infra/*.pem
+infra/*.key
+infra/*.crt
+infra/*.csr

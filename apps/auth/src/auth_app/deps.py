@@ -116,3 +116,4 @@ async def require_current_user(
         )
     return user
 
+

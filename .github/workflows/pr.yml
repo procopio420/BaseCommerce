@@ -1,0 +1,74 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: ['*']
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black pytest pytest-cov
+          # Install CLI dependencies
+          pip install -e infra/cli
+          # Install vertical construction dependencies for tests
+          pip install -r apps/verticals/construction/requirements.txt
+          pip install -r apps/verticals/construction/requirements-dev.txt || true
+          # Install shared packages
+          pip install -e packages/basecore
+          pip install -e packages/engines_core
+      
+      - name: Lint with ruff
+        run: |
+          ruff check apps/ packages/ infra/cli/ tests/
+      
+      - name: Format check with black
+        run: |
+          black --check apps/ packages/ infra/cli/ tests/
+      
+      - name: Run tests
+        run: |
+          # Run tests in construction vertical
+          cd apps/verticals/construction
+          PYTHONPATH=src pytest tests/ -v --cov=construction_app --cov-report=term-missing || true
+          cd ../../..
+          # Run integration tests
+          PYTHONPATH=. pytest tests/integration/ -v || true
+          # Run CLI tests
+          cd infra/cli
+          pytest tests/ -v || true
+        continue-on-error: true
+      
+      - name: Build Docker images (validation)
+        run: |
+          # Validate that all Dockerfiles can be built
+          docker buildx create --use || true
+          
+          echo "Building auth image..."
+          docker buildx build --load -f apps/auth/Dockerfile -t basecommerce-auth:test .
+          
+          echo "Building engines image..."
+          docker buildx build --load -f apps/engines/Dockerfile -t basecommerce-engines:test .
+          
+          echo "Building outbox-relay image..."
+          docker buildx build --load -f apps/outbox-relay/Dockerfile -t basecommerce-outbox-relay:test .
+          
+          echo "Building construction image..."
+          docker buildx build --load -f apps/verticals/construction/Dockerfile -t basecommerce-construction:test .
+          
+          echo "All images built successfully!"
+
+

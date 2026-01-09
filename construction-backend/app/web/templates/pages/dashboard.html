@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - {{ tenant_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Bem-vindo, {{ user.nome }}!</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <span class="stat-value">{{ cotacoes_count }}</span>
+            <span class="stat-label">Cotações</span>
+        </div>
+        <a href="/web/cotacoes" class="stat-link">Ver todas &rarr;</a>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <span class="stat-value">{{ pedidos_count }}</span>
+            <span class="stat-label">Pedidos</span>
+        </div>
+        <a href="/web/pedidos" class="stat-link">Ver todos &rarr;</a>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Cotações Recentes</h2>
+        <a href="/web/cotacoes" class="btn btn-outline btn-sm">Ver todas</a>
+    </div>
+
+    {% if cotacoes_recentes %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Cliente</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cotacao in cotacoes_recentes %}
+                <tr>
+                    <td class="font-mono">{{ cotacao.numero or cotacao.id|string|truncate(8, True, '') }}</td>
+                    <td>{{ cotacao.cliente.nome if cotacao.cliente else '-' }}</td>
+                    <td>R$ {{ "%.2f"|format(cotacao.valor_total or 0) }}</td>
+                    <td>
+                        <span class="badge badge-{{ cotacao.status }}">
+                            {{ cotacao.status|capitalize }}
+                        </span>
+                    </td>
+                    <td>{{ cotacao.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Nenhuma cotação ainda.</p>
+        <a href="/web/cotacoes" class="btn btn-primary">Criar primeira cotação</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block title %}Pedidos - {{ tenant_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Pedidos</h1>
+</div>
+
+<div id="pedidos-table" hx-get="/web/pedidos/table" hx-trigger="pedidoUpdated from:body">
+    {% include "partials/table_pedidos.html" %}
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,7 @@
+# SSL certificates directory
+# Place Cloudflare Origin Certificates here:
+# - origin.pem (certificate)
+# - origin.key (private key)
+# See SETUP_SSL.md for instructions
+
+

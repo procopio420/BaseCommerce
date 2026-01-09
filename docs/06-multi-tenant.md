@@ -183,7 +183,7 @@ O sistema funciona sem tenant especifico (modo desenvolvimento).
 
 2. Inicie os servicos:
 ```bash
-cd infra/local-dev
+cd infra/envs/development/local
 docker compose up -d
 ```
 

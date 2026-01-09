@@ -1,0 +1,78 @@
+# BaseCommerce Infrastructure Inventory
+# Fonte única da verdade para configuração de droplets
+#
+# Estrutura por ambiente:
+# - production: Droplets de produção (IPs reais)
+# - staging: Droplets de staging (IPs placeholder - preencher quando criar)
+# - development: Não requer inventory (usa Docker Compose local)
+
+production:
+  edge:
+    ip: 191.252.120.36
+    user: root
+    role: edge
+    hostname: vps63608.publiccloud.com.br
+    description: Nginx reverse proxy + Auth service
+
+  platform:
+    ip: 191.252.120.182
+    user: root
+    role: platform
+    hostname: vps63610.publiccloud.com.br
+    description: PostgreSQL + Redis + Outbox Relay + Engines Worker
+
+  vertical_construction:
+    ip: 191.252.120.176
+    user: root
+    role: vertical
+    vertical: construction
+    hostname: vps63609.publiccloud.com.br
+    description: Construction vertical (FastAPI)
+
+staging:
+  edge:
+    ip: ""  # TODO: Replace with staging edge droplet IP
+    user: root
+    role: edge
+    hostname: ""  # TODO: Replace with staging edge hostname
+    description: Staging - Nginx reverse proxy + Auth service
+
+  platform:
+    ip: ""  # TODO: Replace with staging platform droplet IP
+    user: root
+    role: platform
+    hostname: ""  # TODO: Replace with staging platform hostname
+    description: Staging - PostgreSQL + Redis + Outbox Relay + Engines Worker
+
+  vertical_construction:
+    ip: ""  # TODO: Replace with staging vertical droplet IP
+    user: root
+    role: vertical
+    vertical: construction
+    hostname: ""  # TODO: Replace with staging vertical hostname
+    description: Staging - Construction vertical (FastAPI)
+
+# Backward compatibility: default to production
+droplets:
+  edge:
+    ip: 191.252.120.36
+    user: root
+    role: edge
+    hostname: vps63608.publiccloud.com.br
+    description: Nginx reverse proxy + Auth service
+
+  platform:
+    ip: 191.252.120.182
+    user: root
+    role: platform
+    hostname: vps63610.publiccloud.com.br
+    description: PostgreSQL + Redis + Outbox Relay + Engines Worker
+
+  vertical_construction:
+    ip: 191.252.120.176
+    user: root
+    role: vertical
+    vertical: construction
+    hostname: vps63609.publiccloud.com.br
+    description: Construction vertical (FastAPI)
+

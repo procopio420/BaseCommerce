@@ -1,0 +1,64 @@
+{% if flash_message %}
+<div class="flash flash-{{ flash_type or 'info' }}" hx-swap-oob="beforeend:#flash-container">
+    {{ flash_message }}
+    <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+</div>
+{% endif %}
+
+{% if pedidos %}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Data</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pedido in pedidos %}
+            <tr id="pedido-{{ pedido.id }}">
+                <td class="font-mono">{{ pedido.numero or pedido.id|string|truncate(8, True, '') }}</td>
+                <td>{{ pedido.cliente.nome if pedido.cliente else '-' }}</td>
+                <td>R$ {{ "%.2f"|format(pedido.valor_total or 0) }}</td>
+                <td>
+                    <span class="badge badge-{{ pedido.status }}">
+                        {% if pedido.status == 'pendente' %}Pendente
+                        {% elif pedido.status == 'em_preparacao' %}Em Preparação
+                        {% elif pedido.status == 'saiu_entrega' %}Saiu para Entrega
+                        {% elif pedido.status == 'entregue' %}Entregue
+                        {% elif pedido.status == 'cancelado' %}Cancelado
+                        {% else %}{{ pedido.status|capitalize }}{% endif %}
+                    </span>
+                </td>
+                <td>{{ pedido.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td class="actions">
+                    {% if pedido.status not in ['entregue', 'cancelado'] %}
+                    <button 
+                        class="btn btn-sm btn-outline btn-danger"
+                        hx-post="/web/pedidos/{{ pedido.id }}/cancelar"
+                        hx-target="#pedidos-table"
+                        hx-swap="innerHTML"
+                        hx-confirm="Tem certeza que deseja cancelar este pedido?"
+                    >
+                        Cancelar
+                    </button>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <p>Nenhum pedido encontrado.</p>
+</div>
+{% endif %}
+
+

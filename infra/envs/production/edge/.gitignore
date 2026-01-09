@@ -1,0 +1,17 @@
+# SSL Certificates (nunca commitar!)
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+nginx/ssl/*.csr
+
+# Mas manter o diretório e .gitkeep
+!nginx/ssl/.gitkeep
+
+# Nginx auto-generated config files (from templates)
+nginx/conf.d/*.conf
+
+# Environment files
+.env
+.env.local
+
+

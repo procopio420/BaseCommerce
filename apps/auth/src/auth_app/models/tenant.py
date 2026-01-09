@@ -22,3 +22,4 @@ class Tenant(Base, BaseModelMixin):
     branding = relationship("TenantBranding", back_populates="tenant", uselist=False)
     users = relationship("User", back_populates="tenant")
 
+

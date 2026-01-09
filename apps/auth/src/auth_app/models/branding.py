@@ -26,3 +26,4 @@ class TenantBranding(Base, BaseModelMixin):
     # Relationship back to tenant
     tenant = relationship("Tenant", back_populates="branding")
 
+

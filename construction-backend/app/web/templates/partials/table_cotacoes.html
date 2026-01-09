@@ -1,0 +1,93 @@
+{% if flash_message %}
+<div class="flash flash-{{ flash_type or 'info' }}" hx-swap-oob="beforeend:#flash-container">
+    {{ flash_message }}
+    <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+</div>
+{% endif %}
+
+{% if cotacoes %}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Data</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cotacao in cotacoes %}
+            <tr id="cotacao-{{ cotacao.id }}">
+                <td class="font-mono">{{ cotacao.numero or cotacao.id|string|truncate(8, True, '') }}</td>
+                <td>{{ cotacao.cliente.nome if cotacao.cliente else '-' }}</td>
+                <td>R$ {{ "%.2f"|format(cotacao.valor_total or 0) }}</td>
+                <td>
+                    <span class="badge badge-{{ cotacao.status }}">
+                        {{ cotacao.status|capitalize }}
+                    </span>
+                </td>
+                <td>{{ cotacao.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td class="actions">
+                    {% if cotacao.status == 'rascunho' %}
+                    <button 
+                        class="btn btn-sm btn-primary"
+                        hx-post="/web/cotacoes/{{ cotacao.id }}/enviar"
+                        hx-target="#cotacoes-table"
+                        hx-swap="innerHTML"
+                    >
+                        Enviar
+                    </button>
+                    <button 
+                        class="btn btn-sm btn-outline btn-danger"
+                        hx-post="/web/cotacoes/{{ cotacao.id }}/cancelar"
+                        hx-target="#cotacoes-table"
+                        hx-swap="innerHTML"
+                        hx-confirm="Tem certeza que deseja cancelar esta cotação?"
+                    >
+                        Cancelar
+                    </button>
+                    {% elif cotacao.status == 'enviada' %}
+                    <button 
+                        class="btn btn-sm btn-success"
+                        hx-post="/web/cotacoes/{{ cotacao.id }}/aprovar"
+                        hx-target="#cotacoes-table"
+                        hx-swap="innerHTML"
+                    >
+                        Aprovar
+                    </button>
+                    <button 
+                        class="btn btn-sm btn-outline btn-danger"
+                        hx-post="/web/cotacoes/{{ cotacao.id }}/cancelar"
+                        hx-target="#cotacoes-table"
+                        hx-swap="innerHTML"
+                        hx-confirm="Tem certeza que deseja cancelar esta cotação?"
+                    >
+                        Cancelar
+                    </button>
+                    {% elif cotacao.status == 'aprovada' %}
+                    <button 
+                        class="btn btn-sm btn-primary"
+                        hx-post="/web/pedidos/from-cotacao/{{ cotacao.id }}"
+                        hx-confirm="Converter esta cotação em pedido?"
+                    >
+                        Converter em Pedido
+                    </button>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <p>Nenhuma cotação encontrada.</p>
+</div>
+{% endif %}
+
+

@@ -17,7 +17,7 @@ BaseCommerce usa uma arquitetura de 3 droplets VPS (~$24/mês):
 ### Desenvolvimento Local
 
 ```bash
-cd infra/local-dev
+cd infra/envs/development/local
 docker compose up -d
 ./smoke-test.sh
 
@@ -37,11 +37,19 @@ Siga o guia completo em [`infra/README.md`](../infra/README.md). Resumo:
 ```bash
 # Em cada droplet
 git clone <repo>
-cd basecommerce/infra/droplet-N-xxx
+cd basecommerce/infra/envs/production/<role>
 sudo ./scripts/bootstrap.sh
 cp env.example .env && nano .env
 docker compose up -d
 ./scripts/smoke-test.sh
+```
+
+**Ou use o CLI `basec`:**
+
+```bash
+# Deploy via CLI (recomendado)
+basec deploy all
+basec smoke
 ```
 
 ## Desenvolvimento Local (Sem Docker)
@@ -137,7 +145,8 @@ print(f'Login: {user.email} / senha123')
 |---------|-----------|
 | [`infra/README.md`](../infra/README.md) | Guia completo de infraestrutura |
 | [`infra/topology.md`](../infra/topology.md) | Decisões de arquitetura e scaling |
-| [`infra/droplet-1-edge/`](../infra/droplet-1-edge/) | Configuração do Edge/Nginx |
-| [`infra/droplet-2-vertical/`](../infra/droplet-2-vertical/) | Configuração do Vertical |
-| [`infra/droplet-3-infra/`](../infra/droplet-3-infra/) | Configuração de DB/Redis |
-| [`infra/local-dev/`](../infra/local-dev/) | Ambiente local de desenvolvimento |
+| [`infra/envs/production/edge/`](../infra/envs/production/edge/) | Configuração do Edge/Nginx (production) |
+| [`infra/envs/production/verticals/construction/`](../infra/envs/production/verticals/construction/) | Configuração do Vertical (production) |
+| [`infra/envs/production/platform/`](../infra/envs/production/platform/) | Configuração de DB/Redis (production) |
+| [`infra/envs/development/local/`](../infra/envs/development/local/) | Ambiente local de desenvolvimento |
+| [`infra/envs/README.md`](../infra/envs/README.md) | Estrutura de ambientes |

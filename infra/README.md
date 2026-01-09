@@ -72,44 +72,68 @@ The platform runs on 3 DigitalOcean droplets with a total cost of ~$24/month:
 infra/
 ├── README.md                  # This file
 ├── topology.md                # Detailed architecture decisions
+├── inventory.yaml             # Infrastructure inventory (source of truth)
+├── deploy_key                 # SSH key for deployments
 │
-├── droplet-1-edge/            # Nginx + Auth
-│   ├── docker-compose.yml
-│   ├── nginx/
-│   │   ├── nginx.conf
-│   │   ├── conf.d/default.conf
-│   │   └── tenants/*.json
-│   ├── env.example
-│   └── scripts/
-│       ├── bootstrap.sh
-│       ├── update.sh
-│       └── smoke-test.sh
+├── envs/                      # Environment-specific configurations
+│   ├── production/            # Production environment
+│   │   ├── edge/              # Nginx + Auth
+│   │   ├── platform/          # PostgreSQL + Redis + Workers
+│   │   └── verticals/         # Vertical applications
+│   │       └── construction/  # Construction vertical
+│   ├── staging/               # Staging environment (same topology as production)
+│   │   ├── edge/
+│   │   ├── platform/
+│   │   └── verticals/
+│   │       └── construction/
+│   └── development/           # Development environments
+│       └── local/              # Local development (simulates 3 droplets)
 │
-├── droplet-2-vertical/        # Construction App
-│   ├── docker-compose.yml
-│   ├── env.example
-│   └── scripts/
-│       ├── bootstrap.sh
-│       ├── update.sh
-│       └── smoke-test.sh
+├── cli/                       # BaseCommerce CLI (basec)
+│   └── basec/                 # CLI implementation
 │
-├── droplet-3-infra/           # PostgreSQL + Redis + Workers
-│   ├── docker-compose.yml
-│   ├── postgres/postgresql.conf
-│   ├── redis/redis.conf
-│   ├── env.example
-│   └── scripts/
-│       ├── bootstrap.sh
-│       ├── update.sh
-│       ├── backup-postgres.sh
-│       ├── restore-postgres.sh
-│       └── smoke-test.sh
-│
-└── local-dev/                 # Local development (simulates 3 droplets)
-    ├── docker-compose.yml
-    ├── nginx/
-    └── smoke-test.sh
+└── docs/                      # Documentation
+    ├── ci-cd.md              # CI/CD documentation
+    ├── infra-cli.md
+    ├── migration-matrix.md
+    └── MIGRATION-COMPLETE.md
 ```
+
+## Environments
+
+The infrastructure supports multiple environments:
+
+| Environment | Purpose | Location |
+|-------------|---------|----------|
+| **production** | Live production environment | `envs/production/` |
+| **staging** | Pre-production testing | `envs/staging/` |
+| **development** | Local development | `envs/development/local/` |
+
+Each environment has the same structure:
+- `edge/` - Nginx + Auth service
+- `platform/` - PostgreSQL + Redis + Workers
+- `verticals/<name>/` - Vertical applications
+
+### Using Different Environments
+
+The CLI `basec` supports `--env` flag for all commands:
+
+```bash
+# Production (default)
+basec status
+basec deploy edge
+
+# Staging
+basec status --env staging
+basec deploy edge --env staging
+basec smoke --env staging
+
+# Development (local Docker Compose)
+cd infra/envs/development/local
+docker compose up -d
+```
+
+See [envs/README.md](envs/README.md) for detailed environment documentation.
 
 ## Deployment Order
 
@@ -119,6 +143,71 @@ Always deploy in this order:
 2. **Droplet 2 (Vertical)** - Connects to Droplet 3
 3. **Droplet 1 (Edge)** - Routes traffic to Droplet 2
 
+## Infrastructure CLI
+
+**⚠️ IMPORTANTE**: Todos os scripts bash foram substituídos pelo CLI Python `basec`.
+
+### Instalação do CLI
+
+```bash
+cd infra/cli
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+### Uso Rápido
+
+```bash
+# Status de todos os droplets
+basec status
+
+# Smoke tests
+basec smoke
+
+# Deploy
+basec deploy all
+
+# Logs
+basec logs edge nginx --follow
+
+# SSH
+basec ssh edge
+
+# Migrations
+basec migrate status
+basec migrate apply
+```
+
+**Documentação completa**: Veja [docs/infra-cli.md](docs/infra-cli.md)
+
+## CI/CD
+
+BaseCommerce usa GitHub Actions para CI/CD completo:
+
+- **PR Checks**: Valida código (lint, tests, build) em pull requests
+- **Deploy Staging**: Deploy automático ao push em `develop`
+- **Deploy Production**: Deploy automático ao push em `main` com rollback automático
+
+**Imagens Docker**: Publicadas no GHCR (`ghcr.io/procopio420/basecommerce`)
+
+**Deploy via CLI**: Todos os deploys usam `basec deploy` com versionamento por tags SHA.
+
+**Documentação completa**: Veja [docs/ci-cd.md](docs/ci-cd.md)
+
+### Quick Deploy via CI/CD
+
+```bash
+# Deploy automático para staging
+git push origin develop
+
+# Deploy automático para production
+git push origin main
+
+# Deploy manual via GitHub Actions UI
+# Actions → Deploy Staging/Production → Run workflow
+```
+
 ## Quick Deploy Guide
 
 ### Prerequisites
@@ -126,7 +215,8 @@ Always deploy in this order:
 1. Create 3 DigitalOcean droplets with private networking enabled
 2. Configure Cloudflare DNS:
    - A record: `*.basecommerce.com.br` → Droplet 1 public IP
-   - SSL mode: Full (strict)
+   - SSL mode: **Flexible** (permite HTTP no servidor, HTTPS no Cloudflare)
+   - ⚠️ Para usar "Full (strict)", configure SSL no nginx primeiro (veja edge/CLOUDFLARE_FIX.md)
 
 ### Droplet 3 (Infra)
 
@@ -136,7 +226,7 @@ ssh root@DROPLET_3_IP
 
 # Clone repo
 git clone https://github.com/yourrepo/basecommerce.git
-cd basecommerce/infra/droplet-3-infra
+cd basecommerce/infra/envs/production/platform
 
 # Run bootstrap as root
 sudo ./scripts/bootstrap.sh
@@ -154,7 +244,7 @@ docker compose up -d
 ssh root@DROPLET_2_IP
 
 git clone https://github.com/yourrepo/basecommerce.git
-cd basecommerce/infra/droplet-2-vertical
+cd basecommerce/infra/envs/production/verticals/construction
 
 sudo ./scripts/bootstrap.sh
 
@@ -170,7 +260,7 @@ docker compose up -d
 ssh root@DROPLET_1_IP
 
 git clone https://github.com/yourrepo/basecommerce.git
-cd basecommerce/infra/droplet-1-edge
+cd basecommerce/infra/envs/production/edge
 
 sudo ./scripts/bootstrap.sh
 
@@ -208,6 +298,22 @@ docker compose up -d
 
 ## Monitoring
 
+Use o CLI `basec` para monitoramento:
+
+```bash
+# Status de todos os droplets
+basec status
+
+# Logs em tempo real
+basec logs edge nginx --follow
+basec logs platform postgres --follow
+
+# Smoke tests
+basec smoke
+```
+
+Ou manualmente em cada droplet:
+
 ```bash
 # On each droplet
 docker compose ps
@@ -217,15 +323,17 @@ docker compose logs -f
 
 ## Backups
 
-Backups are automated on Droplet 3:
+Backups são executados via SSH no Droplet 3 (scripts locais nos droplets):
 
 ```bash
-# Manual backup
-./scripts/backup-postgres.sh
+# Manual backup via CLI
+basec ssh platform "cd /opt/basecommerce && ./scripts/backup-postgres.sh"
 
-# Restore
-./scripts/restore-postgres.sh backup-2024-01-01.sql.gz
+# Restore via CLI
+basec ssh platform "cd /opt/basecommerce && ./scripts/restore-postgres.sh backup-2024-01-01.sql.gz"
 ```
+
+**Nota**: Os scripts `backup-postgres.sh` e `restore-postgres.sh` são scripts locais nos droplets (em `/opt/basecommerce/scripts/`), não fazem parte do CLI.
 
 Backups are stored in `./backups/` with 7-day retention.
 
@@ -243,7 +351,7 @@ See [topology.md](topology.md) for detailed scaling guidance.
 ## Local Development
 
 ```bash
-cd infra/local-dev
+cd infra/envs/development/local
 docker compose up -d
 ./smoke-test.sh
 

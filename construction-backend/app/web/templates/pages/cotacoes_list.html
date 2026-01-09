@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block title %}Cotações - {{ tenant_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Cotações</h1>
+</div>
+
+<div id="cotacoes-table" hx-get="/web/cotacoes/table" hx-trigger="cotacaoUpdated from:body">
+    {% include "partials/table_cotacoes.html" %}
+</div>
+{% endblock %}
+
+

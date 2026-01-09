@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ tenant_name }}{% endblock %}</title>
+    
+    <!-- Branding CSS Variables -->
+    <style>
+        :root {
+            --primary-color: {{ branding.primary_color if branding else '#1a73e8' }};
+            --secondary-color: {{ branding.secondary_color if branding else '#ea4335' }};
+            --primary-hover: color-mix(in srgb, var(--primary-color) 85%, black);
+            --primary-light: color-mix(in srgb, var(--primary-color) 15%, white);
+        }
+    </style>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    
+    <!-- App Styles -->
+    <link rel="stylesheet" href="/web/static/app.css">
+    
+    {% block head %}{% endblock %}
+</head>
+<body hx-boost="true">
+    <!-- Flash Messages Container -->
+    <div id="flash-container" class="flash-container">
+        {% if flash_message %}
+        <div class="flash flash-{{ flash_type or 'info' }}">
+            {{ flash_message }}
+            <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if user %}
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            {% if branding and branding.logo_url %}
+            <img src="{{ branding.logo_url }}" alt="{{ tenant_name }}" class="navbar-logo">
+            {% else %}
+            <span class="navbar-title">{{ tenant_name }}</span>
+            {% endif %}
+        </div>
+        
+        <div class="navbar-menu">
+            <a href="/web/dashboard" class="navbar-link {% if request.url.path == '/web/dashboard' %}active{% endif %}">
+                Dashboard
+            </a>
+            <a href="/web/cotacoes" class="navbar-link {% if '/cotacoes' in request.url.path %}active{% endif %}">
+                Cotações
+            </a>
+            <a href="/web/pedidos" class="navbar-link {% if '/pedidos' in request.url.path %}active{% endif %}">
+                Pedidos
+            </a>
+        </div>
+        
+        <div class="navbar-user">
+            <span class="user-name">{{ user.nome }}</span>
+            <a href="/web/logout" class="btn btn-outline btn-sm">Sair</a>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 {{ tenant_name }}. Powered by BaseCommerce.</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+
+

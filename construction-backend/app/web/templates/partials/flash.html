@@ -1,0 +1,8 @@
+{% if flash_message %}
+<div class="flash flash-{{ flash_type or 'info' }}" hx-swap-oob="beforeend:#flash-container">
+    {{ flash_message }}
+    <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+</div>
+{% endif %}
+
+

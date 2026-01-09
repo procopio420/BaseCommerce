@@ -87,3 +87,4 @@ class TenantDetailResponse(BaseModel):
     class Config:
         from_attributes = True
 
+

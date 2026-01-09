@@ -249,7 +249,9 @@ No changes needed. Current setup handles this easily.
 
 ### Recovery Procedures
 
-1. **Droplet failure:** Create new droplet, run bootstrap.sh, restore config
+1. **Droplet failure:** Create new droplet, run bootstrap.sh from `infra/envs/production/<role>/`, restore config (use `basec ssh` to access)
+2. **Add new environment:** Copy `envs/production/` to `envs/<new-env>/`, update `inventory.yaml`, configure IPs
+3. **Add new vertical:** Copy `envs/production/verticals/construction/` to `envs/production/verticals/<new-vertical>/`, update `inventory.yaml`
 2. **Database corruption:** Stop workers, restore backup, restart
 3. **Datacenter failure:** Create droplets in new region, restore backup
 
