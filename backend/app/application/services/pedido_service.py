@@ -3,6 +3,9 @@ Serviço de aplicação para pedidos
 
 Orquestra a criação, conversão de cotações e gestão de pedidos.
 Não contém lógica de domínio (fica no domínio), apenas orquestra.
+
+NOTE: Engine calls removed - all engine processing now happens via events.
+Verticals only publish events to outbox, engines consume asynchronously.
 """
 
 import logging
@@ -12,26 +15,6 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core_engines.delivery_fulfillment import (
-    DeliveryFulfillmentImplementation,
-    DeliveryFulfillmentPort,
-)
-from app.core_engines.delivery_fulfillment.dto import (
-    DeliveryAddress,
-    DeliveryProduct,
-    ReadyForDeliveryOrder,
-)
-from app.core_engines.sales_intelligence import (
-    SalesIntelligenceImplementation,
-    SalesIntelligencePort,
-)
-from app.core_engines.sales_intelligence.dto import SaleEvent as SalesSaleEvent
-from app.core_engines.sales_intelligence.dto import SoldProduct
-from app.core_engines.stock_intelligence import (
-    StockIntelligenceImplementation,
-    StockIntelligencePort,
-)
-from app.core_engines.stock_intelligence.dto import SaleEvent, SaleItem
 from app.domain.pedido.exceptions import (
     CotacaoNaoAprovadaException,
     CotacaoSemItensException,
@@ -52,18 +35,9 @@ logger = logging.getLogger(__name__)
 class PedidoService:
     """Serviço de aplicação para gestão de pedidos"""
 
-    def __init__(
-        self,
-        db: Session,
-        delivery_fulfillment: DeliveryFulfillmentPort | None = None,
-        stock_intelligence: StockIntelligencePort | None = None,
-        sales_intelligence: SalesIntelligencePort | None = None,
-    ):
+    def __init__(self, db: Session):
         self.db = db
-        # Injeção de dependência: usa implementações reais por padrão
-        self.delivery_fulfillment = delivery_fulfillment or DeliveryFulfillmentImplementation(db)
-        self.stock_intelligence = stock_intelligence or StockIntelligenceImplementation(db)
-        self.sales_intelligence = sales_intelligence or SalesIntelligenceImplementation(db)
+        # NOTE: Engine implementations removed - all processing via events
 
     def gerar_numero_pedido(self, tenant_id: UUID) -> str:
         """
@@ -239,10 +213,9 @@ class PedidoService:
         4. Cria pedido copiando dados da cotação (transacional)
         5. Copia todos os itens da cotação para o pedido (preços "congelados")
         6. Atualiza cotação para status "convertida"
+        7. Publica evento quote_converted (engines processam via outbox)
         """
         # Busca cotação com LOCK PESSIMISTA (proteção contra concorrência)
-        # with_for_update() garante que apenas uma transação pode ler/modificar
-        # Isso evita condições de corrida quando múltiplas requisições tentam converter
         cotacao = (
             self.db.query(Cotacao)
             .filter(Cotacao.id == cotacao_id, Cotacao.tenant_id == tenant_id)
@@ -261,16 +234,15 @@ class PedidoService:
         )
 
         if pedido_existente:
-            # Retorna pedido existente (idempotência)
             return pedido_existente
 
-        # Validações de domínio (só valida se não foi convertida ainda)
+        # Validações de domínio
         if cotacao.status != "aprovada":
             raise CotacaoNaoAprovadaException(
                 "Apenas cotações aprovadas podem ser convertidas em pedido"
             )
 
-        # Busca itens da cotação (com tenant_id garantido)
+        # Busca itens da cotação
         cotacao_itens = (
             self.db.query(CotacaoItem)
             .filter(CotacaoItem.cotacao_id == cotacao_id, CotacaoItem.tenant_id == tenant_id)
@@ -281,9 +253,8 @@ class PedidoService:
         if not cotacao_itens:
             raise CotacaoSemItensException("Cotação não possui itens")
 
-        # OPERAÇÃO TRANSACIONAL: Tudo ou nada
+        # OPERAÇÃO TRANSACIONAL
         try:
-            # Cria pedido copiando dados da cotação
             numero = self.gerar_numero_pedido(tenant_id)
 
             pedido = Pedido(
@@ -301,16 +272,16 @@ class PedidoService:
             self.db.add(pedido)
             self.db.flush()
 
-            # Copia itens da cotação para o pedido (preços "congelados")
+            # Copia itens da cotação para o pedido
             for idx, cotacao_item in enumerate(cotacao_itens):
                 pedido_item = PedidoItem(
                     tenant_id=tenant_id,
                     pedido_id=pedido.id,
                     produto_id=cotacao_item.produto_id,
                     quantidade=cotacao_item.quantidade,
-                    preco_unitario=cotacao_item.preco_unitario,  # Preço "congelado"
+                    preco_unitario=cotacao_item.preco_unitario,
                     desconto_percentual=cotacao_item.desconto_percentual,
-                    valor_total=cotacao_item.valor_total,  # Valor "congelado"
+                    valor_total=cotacao_item.valor_total,
                     observacoes=cotacao_item.observacoes,
                     ordem=cotacao_item.ordem if cotacao_item.ordem > 0 else idx,
                 )
@@ -320,7 +291,9 @@ class PedidoService:
             cotacao.status = "convertida"
             cotacao.convertida_em = datetime.utcnow()
 
-            # PUBLICAR EVENTO: quote_converted (na mesma transação ANTES do commit)
+            # PUBLICA EVENTO: quote_converted
+            # Engines consume this event asynchronously via outbox
+            # Payload contains all data needed - no vertical DB queries by engines
             try:
                 publish_event(
                     db=self.db,
@@ -334,6 +307,7 @@ class PedidoService:
                         "work_id": str(pedido.obra_id) if pedido.obra_id else None,
                         "total_value": str(sum(item.valor_total for item in pedido.itens)),
                         "converted_at": datetime.utcnow().isoformat(),
+                        "vertical": "materials",
                         "items": [
                             {
                                 "product_id": str(item.produto_id),
@@ -347,7 +321,6 @@ class PedidoService:
                     version="1.0",
                 )
             except Exception as e:
-                # Fail gracefully: se publicação de evento falhar, loga mas não quebra transação
                 logger.warning(
                     "Falha ao publicar evento quote_converted",
                     extra={
@@ -358,52 +331,14 @@ class PedidoService:
                     },
                     exc_info=True,
                 )
-                # NÃO levanta exceção - permite que transação continue
 
-            # COMMIT TRANSACIONAL: Tudo ou nada (pedido + evento)
+            # COMMIT TRANSACIONAL
             self.db.commit()
             self.db.refresh(pedido)
-
-            # Sales Intelligence Engine: Registra venda concluída para atualizar histórico de vendas
-            # MANTIDO para compatibilidade (será removido quando handlers estiverem prontos)
-            try:
-                produtos_vendidos = [
-                    SoldProduct(
-                        produto_id=item.produto_id,
-                        quantidade=item.quantidade,
-                        preco_unitario=item.preco_unitario,
-                        valor_total=item.valor_total,
-                        foi_sugerido=False,  # MVP2: pode ser melhorado com tracking de sugestões
-                    )
-                    for item in pedido.itens
-                ]
-                sale_event = SalesSaleEvent(
-                    tenant_id=tenant_id,
-                    pedido_id=pedido.id,
-                    produtos_vendidos=produtos_vendidos,
-                    valor_total_pedido=sum(item.valor_total for item in pedido.itens),
-                    cotacao_id=cotacao.id,
-                    cliente_id=cotacao.cliente_id,
-                    data_venda=datetime.utcnow(),
-                )
-                self.sales_intelligence.register_sale(sale_event)
-            except Exception as e:
-                # Fail gracefully: se engine não disponível, continua normalmente
-                logger.warning(
-                    "Falha ao registrar venda no Sales Intelligence Engine",
-                    extra={
-                        "tenant_id": str(tenant_id),
-                        "pedido_id": str(pedido.id),
-                        "cotacao_id": str(cotacao.id),
-                        "error": str(e),
-                    },
-                    exc_info=True,
-                )
 
             return pedido
 
         except Exception:
-            # ROLLBACK em caso de erro
             self.db.rollback()
             raise
 
@@ -447,6 +382,10 @@ class PedidoService:
         Validações:
         - Pedido deve existir
         - Status deve ser válido
+
+        Events published:
+        - sale_recorded: when status becomes "entregue"
+        - order_status_changed: on any status change
         """
         pedido = (
             self.db.query(Pedido)
@@ -461,14 +400,14 @@ class PedidoService:
         if novo_status not in status_validos:
             raise ValueError(f"Status inválido: {novo_status}")
 
-        # Salva status antigo antes de atualizar
         status_antigo = pedido.status
 
-        # Se status for "entregue", registra data de entrega
+        # Se status for "entregue", registra data de entrega e publica sale_recorded
         if novo_status == "entregue":
             pedido.entregue_em = datetime.utcnow()
 
-            # PUBLICAR EVENTO: sale_recorded (na mesma transação)
+            # PUBLICA EVENTO: sale_recorded
+            # This event has ALL data for engines to compute stock/sales insights
             try:
                 publish_event(
                     db=self.db,
@@ -481,6 +420,7 @@ class PedidoService:
                         "work_id": str(pedido.obra_id) if pedido.obra_id else None,
                         "delivered_at": pedido.entregue_em.isoformat(),
                         "total_value": str(sum(item.valor_total for item in pedido.itens)),
+                        "vertical": "materials",
                         "items": [
                             {
                                 "product_id": str(item.produto_id),
@@ -494,7 +434,6 @@ class PedidoService:
                     version="1.0",
                 )
             except Exception as e:
-                # Fail gracefully: se publicação de evento falhar, loga mas não quebra transação
                 logger.warning(
                     "Falha ao publicar evento sale_recorded",
                     extra={
@@ -504,43 +443,8 @@ class PedidoService:
                     },
                     exc_info=True,
                 )
-                # NÃO levanta exceção - permite que transação continue
 
-            # COMMIT: sale_recorded evento na mesma transação
-            self.db.commit()
-            self.db.refresh(pedido)
-
-            # Stock Intelligence Engine: Registra venda (pedido entregue = venda concluída) para atualizar histórico
-            # MANTIDO para compatibilidade (será removido quando handlers estiverem prontos)
-            try:
-                itens = [
-                    SaleItem(
-                        produto_id=item.produto_id,
-                        quantidade=item.quantidade,
-                        valor_total=item.valor_total,
-                    )
-                    for item in pedido.itens
-                ]
-                sale_event = SaleEvent(
-                    tenant_id=tenant_id,
-                    pedido_id=pedido_id,
-                    data_entrega=pedido.entregue_em,
-                    itens=itens,
-                )
-                self.stock_intelligence.register_sale(sale_event)
-            except Exception as e:
-                # Fail gracefully: se engine não disponível, continua normalmente
-                logger.warning(
-                    "Falha ao registrar venda no Stock Intelligence Engine",
-                    extra={
-                        "tenant_id": str(tenant_id),
-                        "pedido_id": str(pedido_id),
-                        "error": str(e),
-                    },
-                    exc_info=True,
-                )
-
-        # PUBLICAR EVENTO: order_status_changed (na mesma transação ANTES do commit)
+        # PUBLICA EVENTO: order_status_changed
         try:
             publish_event(
                 db=self.db,
@@ -552,67 +456,16 @@ class PedidoService:
                     "new_status": novo_status,
                     "changed_at": datetime.utcnow().isoformat(),
                     "changed_by": str(usuario_id) if usuario_id else None,
+                    "vertical": "materials",
                 },
                 version="1.0",
             )
         except Exception as e:
-            # Fail gracefully: se publicação de evento falhar, loga mas não quebra transação
             logger.warning(
                 "Falha ao publicar evento order_status_changed",
                 extra={"tenant_id": str(tenant_id), "pedido_id": str(pedido_id), "error": str(e)},
                 exc_info=True,
             )
-            # NÃO levanta exceção - permite que transação continue
-
-        # Atualiza status do pedido ANTES do commit
-        pedido.status = novo_status
-
-        # COMMIT: status + eventos na mesma transação
-        self.db.commit()
-        self.db.refresh(pedido)
-
-        # Delivery & Fulfillment Engine: Se status for "saiu_entrega", consulta engine para planejar rotas
-        # MANTIDO para compatibilidade (será removido quando handlers estiverem prontos)
-        # O evento order_status_changed já foi publicado e será processado pelo handler
-        if novo_status == "saiu_entrega":
-            try:
-                # Busca endereço de entrega (do cliente ou da obra)
-                endereco = self._get_delivery_address(pedido)
-
-                # Converte itens para DeliveryProduct
-                produtos = [
-                    DeliveryProduct(
-                        produto_id=item.produto_id,
-                        quantidade=item.quantidade,
-                        peso=None,  # Futuro: peso do produto
-                        volume=None,  # Futuro: volume do produto
-                    )
-                    for item in pedido.itens
-                ]
-
-                order = ReadyForDeliveryOrder(
-                    tenant_id=tenant_id,
-                    pedido_id=pedido_id,
-                    cliente_id=pedido.cliente_id,
-                    endereco_entrega=endereco,
-                    produtos=produtos,
-                    obra_id=pedido.obra_id,
-                    prioridade="normal",
-                    observacoes=pedido.observacoes,
-                )
-                _rotas = self.delivery_fulfillment.plan_routes([order])
-                # TODO: Vertical decide como usar rotas sugeridas (pode ser retornado via API)
-            except Exception as e:
-                # Fail gracefully: se engine não disponível, continua normalmente
-                logger.warning(
-                    "Falha ao planejar rotas no Delivery & Fulfillment Engine",
-                    extra={
-                        "tenant_id": str(tenant_id),
-                        "pedido_id": str(pedido_id),
-                        "error": str(e),
-                    },
-                    exc_info=True,
-                )
 
         pedido.status = novo_status
 
@@ -620,79 +473,3 @@ class PedidoService:
         self.db.refresh(pedido)
 
         return pedido
-
-    def _get_delivery_address(self, pedido: Pedido) -> DeliveryAddress:
-        """
-        Método auxiliar para obter endereço de entrega.
-        Prioriza endereço da obra, depois endereço do cliente.
-        """
-        from app.models.cliente import Cliente
-        from app.models.obra import Obra
-
-        # Se tem obra, usa endereço da obra
-        if pedido.obra_id:
-            obra = self.db.query(Obra).filter(Obra.id == pedido.obra_id).first()
-            if obra and obra.endereco:
-                # Parse endereço da obra (formato simples: "Rua, Número - Bairro")
-                endereco_parts = obra.endereco.split(",") if obra.endereco else []
-                rua_numero = (
-                    endereco_parts[0].strip() if len(endereco_parts) > 0 else obra.endereco or ""
-                )
-                bairro = endereco_parts[1].strip() if len(endereco_parts) > 1 else ""
-
-                # Separa rua e número
-                rua_numero_parts = rua_numero.split("-")
-                rua = rua_numero_parts[0].strip() if len(rua_numero_parts) > 0 else rua_numero
-                numero = rua_numero_parts[1].strip() if len(rua_numero_parts) > 1 else ""
-
-                return DeliveryAddress(
-                    rua=rua,
-                    numero=numero,
-                    bairro=bairro,
-                    cidade=obra.cidade or "",
-                    estado=obra.estado or "",
-                    cep="",
-                    coordenadas_gps=None,
-                    instrucoes_acesso=None,
-                    horario_preferencial=None,
-                )
-
-        # Usa endereço do cliente
-        cliente = self.db.query(Cliente).filter(Cliente.id == pedido.cliente_id).first()
-        if cliente and cliente.endereco:
-            # Parse endereço do cliente (formato simples)
-            endereco_parts = cliente.endereco.split(",") if cliente.endereco else []
-            rua_numero = (
-                endereco_parts[0].strip() if len(endereco_parts) > 0 else cliente.endereco or ""
-            )
-            bairro = endereco_parts[1].strip() if len(endereco_parts) > 1 else ""
-
-            # Separa rua e número
-            rua_numero_parts = rua_numero.split("-")
-            rua = rua_numero_parts[0].strip() if len(rua_numero_parts) > 0 else rua_numero
-            numero = rua_numero_parts[1].strip() if len(rua_numero_parts) > 1 else ""
-
-            return DeliveryAddress(
-                rua=rua,
-                numero=numero,
-                bairro=bairro,
-                cidade=cliente.cidade or "",
-                estado=cliente.estado or "",
-                cep=cliente.cep or "",
-                coordenadas_gps=None,
-                instrucoes_acesso=None,
-                horario_preferencial=None,
-            )
-
-        # Fallback: endereço vazio
-        return DeliveryAddress(
-            rua="",
-            numero="",
-            bairro="",
-            cidade="",
-            estado="",
-            cep="",
-            coordenadas_gps=None,
-            instrucoes_acesso=None,
-            horario_preferencial=None,
-        )

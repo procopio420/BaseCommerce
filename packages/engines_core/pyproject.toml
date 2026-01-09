@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "engines-core"
+version = "1.0.0"
+description = "Horizontal engines runtime - independent from verticals"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0.23",
+    "pydantic>=2.5.0",
+    "psycopg2-binary>=2.9.9",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

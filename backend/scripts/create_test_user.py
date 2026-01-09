@@ -9,13 +9,15 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal, engine, Base
-from app.core.security import get_password_hash
+from basecore.db import Base, get_engine, get_sessionmaker
+from basecore.security import get_password_hash
 from app.models.tenant import Tenant
 from app.models.user import User
 
 def create_test_data():
     """Cria tenant e usuário de teste"""
+    SessionLocal = get_sessionmaker()
+    engine = get_engine()
     db = SessionLocal()
     
     try:

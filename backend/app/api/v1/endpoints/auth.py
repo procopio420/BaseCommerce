@@ -3,12 +3,12 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.core.database import get_db
-from app.core.security import create_access_token, verify_password
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import Token, UserLogin
+from basecore.db import get_db
+from basecore.security import create_access_token, verify_password
+from basecore.settings import get_settings
 
 router = APIRouter()
 
@@ -19,6 +19,7 @@ async def login(user_login: UserLogin, db: Session = Depends(get_db)):
     Login de usuário.
     Se tenant_id não for fornecido, busca primeiro usuário ativo.
     """
+    settings = get_settings()
     # Se tenant_id fornecido, busca por tenant específico
     if user_login.tenant_id:
         tenant = (

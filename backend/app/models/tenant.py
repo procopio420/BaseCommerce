@@ -1,6 +1,6 @@
 from sqlalchemy import Boolean, Column, String, Text
 
-from app.core.database import Base
+from basecore.db import Base
 from app.models.base import BaseModelMixin
 
 

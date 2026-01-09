@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Session, relationship
 
-from app.core.database import Base
+from basecore.db import Base
 from app.models.base import BaseModelMixin
 from app.platform.events.types import EventType
 

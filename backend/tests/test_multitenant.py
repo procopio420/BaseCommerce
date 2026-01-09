@@ -34,7 +34,7 @@ def tenant2(db):
 @pytest.fixture(scope="function")
 def user2(db, tenant2):
     """Cria segundo usuário de teste (admin)"""
-    from app.core.security import get_password_hash
+    from basecore.security import get_password_hash
     from app.models.user import User
 
     user = User(

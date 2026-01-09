@@ -1,33 +1,9 @@
-import json
-
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.core.database import Base
+from basecore.db import Base
 from app.models.base import BaseModelMixin
-
-# #region agent log
-_log_path = "/home/lucas/hobby/construction/.cursor/debug.log"
-try:
-    with open(_log_path, "a") as f:
-        f.write(
-            json.dumps(
-                {
-                    "location": "pedido.py:8",
-                    "message": "Pedido model importing",
-                    "data": {"Integer_imported": "Integer" in dir(__import__("sqlalchemy"))},
-                    "sessionId": "debug-session",
-                    "runId": "startup",
-                    "hypothesisId": "INTEGER_IMPORT",
-                },
-                ensure_ascii=False,
-            )
-            + "\n"
-        )
-except Exception:
-    pass
-# #endregion
 
 
 class Pedido(Base, BaseModelMixin):

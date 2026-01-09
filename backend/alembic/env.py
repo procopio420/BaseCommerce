@@ -8,8 +8,8 @@ import sys
 # Adiciona o diretório raiz ao path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.core.database import Base
-from app.core.config import settings
+from basecore.db import Base
+from basecore.settings import get_settings
 from app.models import *  # Importa todos os modelos
 
 # this is the Alembic Config object, which provides
@@ -22,6 +22,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the SQLAlchemy URL from settings
+settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # add your model's MetaData object here

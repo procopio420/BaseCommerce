@@ -3,6 +3,9 @@ Serviço de aplicação para cotações
 
 Orquestra a criação, edição e gestão de cotações.
 Não contém lógica de domínio (fica no domínio), apenas orquestra.
+
+NOTE: Engine logic removed - all engine processing happens via events.
+Sales suggestions are available via /insights/sales/suggestions endpoints.
 """
 
 import logging
@@ -12,14 +15,6 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core_engines.sales_intelligence import (
-    SalesIntelligenceImplementation,
-    SalesIntelligencePort,
-)
-from app.core_engines.sales_intelligence.dto import (
-    CartProduct,
-    SuggestionContext,
-)
 from app.domain.cotacao.exceptions import (
     CotacaoNaoPodeSerAprovadaException,
     CotacaoNaoPodeSerEditadaException,
@@ -40,14 +35,8 @@ logger = logging.getLogger(__name__)
 class CotacaoService:
     """Serviço de aplicação para gestão de cotações"""
 
-    def __init__(
-        self,
-        db: Session,
-        sales_intelligence: SalesIntelligencePort | None = None,
-    ):
+    def __init__(self, db: Session):
         self.db = db
-        # Injeção de dependência: usa implementação real por padrão
-        self.sales_intelligence = sales_intelligence or SalesIntelligenceImplementation(db)
 
     def gerar_numero_cotacao(self, tenant_id: UUID) -> str:
         """
@@ -92,6 +81,8 @@ class CotacaoService:
         - Obra deve existir e pertencer ao cliente (se fornecida)
         - Produtos devem existir e estar ativos
         - Deve ter pelo menos 1 item
+
+        Note: Sales suggestions are available via /insights/sales/complementary/{product_id}
         """
         # Valida cliente
         cliente = (
@@ -158,35 +149,6 @@ class CotacaoService:
 
         if not cotacao_itens:
             raise ValueError("Cotação deve ter pelo menos um item")
-
-        # Sales Intelligence Engine: Obtém sugestões de produtos complementares
-        # Sugestões serão retornadas mas não adicionadas automaticamente (vertical decide)
-        try:
-            produtos_carrinho = [
-                CartProduct(produto_id=item["produto"].id, quantidade=item["quantidade"])
-                for item in cotacao_itens
-            ]
-            context = SuggestionContext(
-                tenant_id=tenant_id,
-                contexto="criando_cotacao",
-                cliente_id=cliente_id,
-                produtos_carrinho=produtos_carrinho,
-            )
-            # Consulta engine para sugestões (pode ser usado para exibir no frontend)
-            _sugestoes = self.sales_intelligence.get_suggestions(context)
-            # TODO: Retornar sugestões na resposta ou via endpoint separado
-        except Exception as e:
-            # Fail gracefully: se engine não disponível, continua normalmente
-            logger.warning(
-                "Falha ao obter sugestões do Sales Intelligence Engine",
-                extra={
-                    "tenant_id": str(tenant_id),
-                    "cliente_id": str(cliente_id),
-                    "contexto": "criando_cotacao",
-                    "error": str(e),
-                },
-                exc_info=True,
-            )
 
         # Cria cotação
         numero = self.gerar_numero_cotacao(tenant_id)

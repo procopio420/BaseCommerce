@@ -61,8 +61,6 @@ async def require_admin_role(current_user: User = Depends(get_current_user)) -> 
     """
     Dependency para garantir que apenas admins podem acessar endpoints.
     Levanta HTTPException 403 se usuário não for admin.
-
-    Usado em endpoints dos engines (/api/v1/engines/*) que requerem acesso administrativo.
     """
     if current_user.role != "admin":
         raise HTTPException(

@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.core.deps import get_current_user, get_tenant_id
+from basecore.db import get_db
+from basecore.deps import get_current_user, get_tenant_id
 from app.models.cliente import Cliente
 from app.models.user import User
 from app.schemas.cliente import ClienteCreate, ClienteResponse, ClienteUpdate

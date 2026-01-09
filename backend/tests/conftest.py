@@ -13,9 +13,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.config import settings
-from app.core.database import Base, get_db
-from app.core.security import get_password_hash
+from basecore.db import Base, get_db
+from basecore.security import get_password_hash
 from app.main import app
 from app.models.cliente import Cliente
 from app.models.obra import Obra

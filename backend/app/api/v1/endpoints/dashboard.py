@@ -1,15 +1,16 @@
 from datetime import datetime, timedelta
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.core.deps import get_current_user, get_tenant_id
 from app.models.cotacao import Cotacao
 from app.models.pedido import Pedido
 from app.models.user import User
+from basecore.db import get_db
+from basecore.deps import get_current_user, get_tenant_id
 
 router = APIRouter()
 
@@ -29,10 +30,13 @@ async def get_dashboard(
     hoje = datetime.utcnow().date()
     inicio_semana = hoje - timedelta(days=hoje.weekday())
 
+    # Converte tenant_id de string para UUID
+    tenant_uuid = UUID(tenant_id)
+    
     # Cotações do dia
     cotacoes_hoje = (
         db.query(func.count(Cotacao.id))
-        .filter(and_(Cotacao.tenant_id == tenant_id, func.date(Cotacao.created_at) == hoje))
+        .filter(and_(Cotacao.tenant_id == tenant_uuid, func.date(Cotacao.created_at) == hoje))
         .scalar()
         or 0
     )
@@ -40,7 +44,7 @@ async def get_dashboard(
     # Pedidos do dia
     pedidos_hoje = (
         db.query(func.count(Pedido.id))
-        .filter(and_(Pedido.tenant_id == tenant_id, func.date(Pedido.created_at) == hoje))
+        .filter(and_(Pedido.tenant_id == tenant_uuid, func.date(Pedido.created_at) == hoje))
         .scalar()
         or 0
     )
@@ -54,7 +58,7 @@ async def get_dashboard(
         db.query(func.count(Pedido.id))
         .filter(
             and_(
-                Pedido.tenant_id == tenant_id,
+                Pedido.tenant_id == tenant_uuid,
                 Pedido.status == "entregue",
                 func.date(Pedido.entregue_em) >= inicio_semana,
             )
@@ -66,7 +70,7 @@ async def get_dashboard(
     # Cotações recentes (últimas 5)
     cotacoes_recentes = (
         db.query(Cotacao)
-        .filter(Cotacao.tenant_id == tenant_id)
+        .filter(Cotacao.tenant_id == tenant_uuid)
         .order_by(Cotacao.created_at.desc())
         .limit(5)
         .all()
