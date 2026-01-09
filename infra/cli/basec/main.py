@@ -4,7 +4,7 @@ import sys
 
 import typer
 
-from basec import compose, deploy, firewall, logs, migrate, rollback, smoke, ssh_cmd, status, tenants
+from basec import compose, deploy, firewall, logs, migrate, rollback, smoke, ssh_cmd, ssl, status, tenants
 
 app = typer.Typer(
     name="basec",
@@ -43,6 +43,7 @@ app.add_typer(ssh_cmd.app, name="ssh")
 app.add_typer(migrate.app, name="migrate")
 app.add_typer(compose.app, name="compose")
 app.add_typer(firewall.app, name="firewall")
+app.add_typer(ssl.app, name="ssl")
 
 
 def main() -> None:
