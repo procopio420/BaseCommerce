@@ -121,36 +121,95 @@ def check(
     if is_valid:
         print_success(f"✓ {message}")
         
+        # Check if nginx container is running
+        with spinner("Checking nginx container status..."):
+            docker.ssh.connect()
+            try:
+                containers = docker.ps()
+                nginx_container = next((c for c in containers if c.get("name") == "basecommerce-nginx"), None)
+                if nginx_container:
+                    status = nginx_container.get("status", "")
+                    nginx_running = "Up" in status or "running" in status.lower()
+                    if not nginx_running:
+                        print_warning(f"⚠ Nginx container exists but is not running (status: {status})")
+                else:
+                    nginx_running = False
+                    print_warning("⚠ Nginx container 'basecommerce-nginx' not found")
+                docker.ssh.disconnect()
+            except Exception as e:
+                docker.ssh.disconnect()
+                print_warning(f"⚠ Could not check container status: {e}")
+                print_info("Trying alternative check method...")
+                # Try direct docker ps check
+                try:
+                    docker.ssh.connect()
+                    exit_code, stdout, _ = docker.ssh.execute(
+                        f"cd {shlex.quote(docker.remote_dir)} && docker compose ps nginx 2>&1",
+                        check=False,
+                        capture_output=True,
+                    )
+                    docker.ssh.disconnect()
+                    nginx_running = "Up" in stdout or "running" in stdout.lower()
+                except Exception:
+                    nginx_running = False
+        
+        if not nginx_running:
+            print_warning("⚠ Nginx container is not running")
+            print_info("Start nginx with: basec ssh edge 'cd /opt/basecommerce/edge && docker compose up -d nginx'")
+        else:
+            print_success("✓ Nginx container is running")
+        
         # Check nginx SSL configuration
-        with spinner("Checking nginx SSL configuration..."):
-            docker.ssh.connect()
-            exit_code, stdout, stderr = docker._run_compose(
-                "exec -T nginx nginx -t 2>&1",
-                capture_output=True,
-            )
-            docker.ssh.disconnect()
-        
-        if exit_code == 0:
-            print_success("✓ Nginx SSL configuration is valid")
-        else:
-            print_error(f"Nginx SSL configuration error:\n{stderr}")
-            sys.exit(1)
-        
-        # Test HTTPS endpoint
-        with spinner("Testing HTTPS endpoint..."):
-            docker.ssh.connect()
-            exit_code_https, stdout_https, _ = docker.ssh.execute(
-                f"curl -k -s -o /dev/null -w '%{{http_code}}' https://localhost/health || echo '000'",
-                check=False,
-                capture_output=True,
-            )
-            docker.ssh.disconnect()
-        
-        if stdout_https.strip() in ["200", "302"]:
-            print_success(f"✓ HTTPS endpoint responding (HTTP {stdout_https.strip()})")
-        else:
-            print_warning(f"HTTPS endpoint test returned: {stdout_https.strip()}")
-            print_warning("This might be normal if nginx is restarting")
+        if nginx_running:
+            with spinner("Checking nginx SSL configuration..."):
+                docker.ssh.connect()
+                try:
+                    # Use exec method which handles errors better
+                    output = docker.exec("nginx", "nginx -t", capture_output=True)
+                    docker.ssh.disconnect()
+                    
+                    if "successful" in output.lower():
+                        print_success("✓ Nginx SSL configuration is valid")
+                    else:
+                        print_warning("⚠ Nginx configuration check returned unexpected output")
+                        print_info(f"Output: {output[:200]}...")
+                except RuntimeError as e:
+                    docker.ssh.disconnect()
+                    print_error(f"✗ Nginx SSL configuration error")
+                    print_error(str(e))
+                    print_section("Troubleshooting")
+                    print("1. Check nginx logs: basec logs edge nginx")
+                    print("2. Verify certificates exist and have correct permissions")
+                    print("3. Check if template was processed correctly")
+                    sys.exit(1)
+                except Exception as e:
+                    docker.ssh.disconnect()
+                    print_warning(f"⚠ Could not validate nginx configuration: {e}")
+            
+            # Test HTTPS endpoint
+            with spinner("Testing HTTPS endpoint..."):
+                docker.ssh.connect()
+                exit_code_https, stdout_https, stderr_https = docker.ssh.execute(
+                    "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/health 2>&1 || echo '000'",
+                    check=False,
+                    capture_output=True,
+                )
+                docker.ssh.disconnect()
+                
+                http_code = stdout_https.strip()
+                if http_code in ["200", "302"]:
+                    print_success(f"✓ HTTPS endpoint responding (HTTP {http_code})")
+                elif http_code == "000":
+                    print_warning(f"⚠ HTTPS endpoint test failed (connection error)")
+                    print_info("This might indicate:")
+                    print_info("  - Nginx is not listening on port 443")
+                    print_info("  - SSL certificates are not configured correctly")
+                    print_info("  - Firewall is blocking port 443")
+                    if stderr_https:
+                        print_info(f"Error: {stderr_https[:200]}")
+                else:
+                    print_warning(f"⚠ HTTPS endpoint returned HTTP {http_code}")
+                    print_info("Expected: 200 or 302")
         
     else:
         print_error(f"✗ {message}")
@@ -159,6 +218,9 @@ def check(
         print("1. Obtain Cloudflare Origin Certificate from dashboard")
         print("2. Run: basec ssl setup edge")
         print("3. Or manually place certificates in nginx/ssl/ directory")
+        print()
+        print_info("If certificates are in infra/origin.pem and infra/origin.key, run:")
+        print("  basec ssl setup edge")
         sys.exit(1)
 
 

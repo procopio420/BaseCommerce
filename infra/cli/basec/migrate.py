@@ -210,3 +210,4 @@ def reset(
         print_error(f"Failed to reset database: {e}")
         sys.exit(1)
 
+

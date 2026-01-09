@@ -45,3 +45,4 @@ def status() -> None:
         except Exception as e:
             print_error(f"Error: {e}")
 
+
