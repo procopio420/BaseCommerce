@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Session, relationship
+from sqlalchemy.orm import Session
 
 from basecore.db import Base
 from construction_app.models.base import BaseModelMixin
@@ -53,7 +53,8 @@ class EventOutbox(Base, BaseModelMixin):
     error_message = Column(Text, nullable=True)
     retry_count = Column(Integer, nullable=False, default=0)
 
-    tenant = relationship("Tenant", backref="event_outbox")
+    # Note: No relationship with Tenant model since it's in auth service
+    # The tenant_id foreign key is maintained at database level only
 
     __table_args__ = (
         Index("idx_event_outbox_tenant_status", "tenant_id", "status"),

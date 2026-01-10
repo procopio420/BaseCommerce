@@ -212,6 +212,101 @@ def redeploy_droplet(
                 
                 docker.ssh.disconnect()
         
+        # For vertical role, sync source code needed for building
+        elif config.role == "vertical":
+            with spinner("Syncing all configuration files..."):
+                from basec.envs import get_project_root, get_vertical_path
+                docker.ssh.connect()
+                
+                project_root = get_project_root()
+                vertical_name = config.vertical or "construction"
+                local_vertical_path = get_vertical_path(vertical_name, env)
+                
+                # Sync docker-compose.yml
+                try:
+                    docker_compose_remote = f"{remote_dir}/docker-compose.yml"
+                    docker.ssh.upload_file(local_vertical_path / "docker-compose.yml", docker_compose_remote)
+                    print_success("✓ Synced docker-compose.yml")
+                except Exception as e:
+                    print_warning(f"⚠ Failed to sync docker-compose.yml: {e}")
+                
+                # Sync source code needed for building vertical service
+                with spinner("Syncing source code for vertical build..."):
+                    try:
+                        # Sync basecore package (needed by vertical Dockerfile)
+                        basecore_local = project_root / "packages" / "basecore"
+                        if basecore_local.exists():
+                            docker.ssh.upload_directory(
+                                basecore_local,
+                                f"{remote_dir}/packages/basecore"
+                            )
+                            print_success("✓ Synced basecore package")
+                        
+                        # Sync engines_core package (needed by vertical Dockerfile)
+                        engines_core_local = project_root / "packages" / "engines_core"
+                        if engines_core_local.exists():
+                            docker.ssh.upload_directory(
+                                engines_core_local,
+                                f"{remote_dir}/packages/engines_core"
+                            )
+                            print_success("✓ Synced engines_core package")
+                        
+                        # Sync vertical service source code
+                        vertical_src_local = project_root / "apps" / "verticals" / vertical_name / "src"
+                        if vertical_src_local.exists():
+                            docker.ssh.upload_directory(
+                                vertical_src_local,
+                                f"{remote_dir}/apps/verticals/{vertical_name}/src"
+                            )
+                            print_success(f"✓ Synced {vertical_name} source code")
+                        
+                        # Sync vertical alembic directory
+                        vertical_alembic_local = project_root / "apps" / "verticals" / vertical_name / "alembic"
+                        if vertical_alembic_local.exists():
+                            docker.ssh.upload_directory(
+                                vertical_alembic_local,
+                                f"{remote_dir}/apps/verticals/{vertical_name}/alembic"
+                            )
+                            print_success(f"✓ Synced {vertical_name} alembic")
+                        
+                        # Sync vertical requirements.txt
+                        vertical_requirements_local = project_root / "apps" / "verticals" / vertical_name / "requirements.txt"
+                        if vertical_requirements_local.exists():
+                            docker.ssh.execute(
+                                f"mkdir -p {shlex.quote(remote_dir)}/apps/verticals/{vertical_name}",
+                                check=False,
+                            )
+                            docker.ssh.upload_file(
+                                vertical_requirements_local,
+                                f"{remote_dir}/apps/verticals/{vertical_name}/requirements.txt"
+                            )
+                            print_success(f"✓ Synced {vertical_name} requirements.txt")
+                        
+                        # Sync vertical alembic.ini
+                        vertical_alembic_ini_local = project_root / "apps" / "verticals" / vertical_name / "alembic.ini"
+                        if vertical_alembic_ini_local.exists():
+                            docker.ssh.upload_file(
+                                vertical_alembic_ini_local,
+                                f"{remote_dir}/apps/verticals/{vertical_name}/alembic.ini"
+                            )
+                            print_success(f"✓ Synced {vertical_name} alembic.ini")
+                        
+                        # Sync vertical Dockerfile
+                        vertical_dockerfile_local = project_root / "apps" / "verticals" / vertical_name / "Dockerfile"
+                        if vertical_dockerfile_local.exists():
+                            docker.ssh.upload_file(
+                                vertical_dockerfile_local,
+                                f"{remote_dir}/apps/verticals/{vertical_name}/Dockerfile"
+                            )
+                            print_success(f"✓ Synced {vertical_name} Dockerfile")
+                        
+                    except Exception as e:
+                        print_warning(f"⚠ Failed to sync source code: {e}")
+                        import traceback
+                        traceback.print_exc()
+                
+                docker.ssh.disconnect()
+        
         # Step 5: Rebuild or pull images
         docker.ssh.connect()
         
@@ -221,6 +316,11 @@ def redeploy_droplet(
                     # Rebuild auth service for edge
                     if config.role == "edge":
                         docker._run_compose("build --no-cache auth", capture_output=False)
+                    # Rebuild vertical service
+                    elif config.role == "vertical":
+                        vertical_name = config.vertical or "construction"
+                        service_name = vertical_name
+                        docker._run_compose(f"build --no-cache {service_name}", capture_output=False)
                     
                     # Pull official images
                     docker._run_compose("pull", capture_output=False)

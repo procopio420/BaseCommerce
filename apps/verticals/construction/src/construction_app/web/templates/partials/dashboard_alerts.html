@@ -1,0 +1,48 @@
+{% if alerts %}
+{% for alert in alerts %}
+<div class="alert-card alert-{{ alert.severity }}">
+    <div class="alert-icon">
+        {% if alert.severity == "warning" or alert.severity == "danger" %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        {% elif alert.severity == "success" %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        {% else %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        {% endif %}
+    </div>
+    <div class="alert-content">
+        <h3 class="alert-title">{{ alert.title }}</h3>
+        <p class="alert-message">{{ alert.message }}</p>
+        {% if alert.days_until_rupture %}
+        <span class="alert-meta">Ruptura estimada em {{ alert.days_until_rupture }} dia(s)</span>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="alert-card alert-info">
+    <div class="alert-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+    </div>
+    <div class="alert-content">
+        <h3 class="alert-title">Tudo certo!</h3>
+        <p class="alert-message">Nenhum alerta crítico no momento. Seu estoque e preços estão dentro do esperado.</p>
+    </div>
+</div>
+{% endif %}
+

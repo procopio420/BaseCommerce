@@ -1,88 +1,282 @@
 {% extends "layout.html" %}
 
-{% block title %}Dashboard - {{ tenant_name }}{% endblock %}
+{% block title %}Painel da {{ tenant_name }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">Dashboard</h1>
-    <p class="page-subtitle">Bem-vindo, {{ user.nome }}!</p>
+    <h1 class="page-title">Painel da {{ tenant_name }}</h1>
+    <p class="page-subtitle">Bem-vindo, {{ user.nome }}! Aqui está o que precisa da sua atenção hoje.</p>
 </div>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
+<!-- =============================================================================
+     BLOCO 1: ALERTAS DO DIA
+     ============================================================================= -->
+<section class="dashboard-section">
+    <h2 class="section-title">Alertas do Dia</h2>
+    <div 
+        id="alerts-container"
+        class="alerts-grid"
+    >
+        {% if alerts %}
+        {% for alert in alerts %}
+        <div class="alert-card alert-{{ alert.severity }}">
+            <div class="alert-icon">
+                {% if alert.severity == "warning" or alert.severity == "danger" %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                {% elif alert.severity == "success" %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                {% endif %}
+            </div>
+            <div class="alert-content">
+                <h3 class="alert-title">{{ alert.title }}</h3>
+                <p class="alert-message">{{ alert.message }}</p>
+                {% if alert.days_until_rupture %}
+                <span class="alert-meta">Ruptura estimada em {{ alert.days_until_rupture }} dia(s)</span>
+                {% endif %}
+            </div>
         </div>
-        <div class="stat-content">
-            <span class="stat-value">{{ cotacoes_count }}</span>
-            <span class="stat-label">Cotações</span>
+        {% endfor %}
+        {% else %}
+        <div class="alert-card alert-info">
+            <div class="alert-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+            </div>
+            <div class="alert-content">
+                <h3 class="alert-title">Tudo certo!</h3>
+                <p class="alert-message">Nenhum alerta crítico no momento. Seu estoque e preços estão dentro do esperado.</p>
+            </div>
         </div>
-        <a href="/web/cotacoes" class="stat-link">Ver todas &rarr;</a>
+        {% endif %}
+    </div>
+</section>
+
+<!-- =============================================================================
+     BLOCO 2: AÇÕES RECOMENDADAS
+     ============================================================================= -->
+<section class="dashboard-section">
+    <h2 class="section-title">Ações Recomendadas</h2>
+    <div class="actions-grid">
+        {% if recommended_actions %}
+        {% for action in recommended_actions %}
+        <a href="{{ action.url }}" class="action-card action-{{ action.priority }}">
+            <div class="action-icon">
+                {% if action.icon == "document-text" %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                {% elif action.icon == "package" %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                {% elif action.icon == "currency-dollar" %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                {% elif action.icon == "trending-up" %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                    <polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+                {% elif action.icon == "document-search" %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+                {% endif %}
+            </div>
+            <div class="action-content">
+                <h3 class="action-title">{{ action.title }}</h3>
+                <p class="action-description">{{ action.description }}</p>
+            </div>
+            <div class="action-arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </div>
+        </a>
+        {% endfor %}
+        {% else %}
+        <a href="/web/cotacoes" class="action-card action-primary">
+            <div class="action-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+            </div>
+            <div class="action-content">
+                <h3 class="action-title">Criar novo orçamento</h3>
+                <p class="action-description">Comece criando seu primeiro orçamento para uma obra ou cliente</p>
+            </div>
+            <div class="action-arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </div>
+        </a>
+        {% endif %}
+    </div>
+</section>
+
+<!-- =============================================================================
+     BLOCO 3: VISÃO RÁPIDA DO NEGÓCIO
+     ============================================================================= -->
+<section class="dashboard-section">
+    <h2 class="section-title">Visão Rápida do Negócio</h2>
+    <div class="business-overview">
+        <div class="business-metric">
+            <div class="metric-icon metric-icon-success">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+            </div>
+            <div class="metric-content">
+                <span class="metric-value">{{ business_overview.week_sales.formatted|default("R$ 0,00") }}</span>
+                <span class="metric-label">Vendas da semana</span>
+                <span class="metric-context">Pedidos entregues esta semana</span>
+            </div>
+        </div>
+
+        <div class="business-metric">
+            <div class="metric-icon metric-icon-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+            </div>
+            <div class="metric-content">
+                <span class="metric-value">{{ business_overview.active_quotations.total }}</span>
+                <span class="metric-label">Orçamentos ativos</span>
+                <span class="metric-context">
+                    {% if business_overview.active_quotations.por_status %}
+                        {% for status, count in business_overview.active_quotations.por_status.items() %}
+                            {{ count }} {{ status }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        Nenhum orçamento em andamento
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div class="business-metric">
+            <div class="metric-icon metric-icon-info">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+            </div>
+            <div class="metric-content">
+                <span class="metric-value">{{ business_overview.top_products|length }}</span>
+                <span class="metric-label">Materiais mais movimentados</span>
+                <span class="metric-context">Últimos 30 dias</span>
+            </div>
+        </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-secondary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="9" cy="21" r="1"></circle>
-                <circle cx="20" cy="21" r="1"></circle>
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-            </svg>
+    {% if business_overview.top_products %}
+    <div class="top-products-list">
+        <h3 class="subsection-title">Top 5 Materiais Mais Vendidos</h3>
+        <div class="products-list">
+            {% for produto in business_overview.top_products %}
+            <div class="product-item">
+                <div class="product-info">
+                    <span class="product-name">{{ produto.nome }}</span>
+                    <span class="product-meta">{{ "%.2f"|format(produto.quantidade_total) }} {{ produto.unidade }}</span>
+                </div>
+                <span class="product-badge">{{ produto.num_vendas }} venda(s)</span>
+            </div>
+            {% endfor %}
         </div>
-        <div class="stat-content">
-            <span class="stat-value">{{ pedidos_count }}</span>
-            <span class="stat-label">Pedidos</span>
-        </div>
-        <a href="/web/pedidos" class="stat-link">Ver todos &rarr;</a>
-    </div>
-</div>
-
-<div class="section">
-    <div class="section-header">
-        <h2 class="section-title">Cotações Recentes</h2>
-        <a href="/web/cotacoes" class="btn btn-outline btn-sm">Ver todas</a>
-    </div>
-
-    {% if cotacoes_recentes %}
-    <div class="table-container">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Número</th>
-                    <th>Cliente</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Data</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cotacao in cotacoes_recentes %}
-                <tr>
-                    <td class="font-mono">{{ cotacao.numero or cotacao.id|string|truncate(8, True, '') }}</td>
-                    <td>{{ cotacao.cliente.nome if cotacao.cliente else '-' }}</td>
-                    <td>R$ {{ "%.2f"|format(cotacao.valor_total or 0) }}</td>
-                    <td>
-                        <span class="badge badge-{{ cotacao.status }}">
-                            {{ cotacao.status|capitalize }}
-                        </span>
-                    </td>
-                    <td>{{ cotacao.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="empty-state">
-        <p>Nenhuma cotação ainda.</p>
-        <a href="/web/cotacoes" class="btn btn-primary">Criar primeira cotação</a>
     </div>
     {% endif %}
-</div>
-{% endblock %}
+</section>
 
+<!-- =============================================================================
+     BLOCO 4: FOCO EM MATERIAL DE CONSTRUÇÃO
+     ============================================================================= -->
+<section class="dashboard-section">
+    <h2 class="section-title">Materiais de Construção</h2>
+    
+    {% if construction_materials.top_selling %}
+    <div class="materials-section">
+        <h3 class="subsection-title">Materiais Mais Vendidos</h3>
+        <div class="materials-list">
+            {% for material in construction_materials.top_selling %}
+            <div class="material-item">
+                <span class="material-badge material-badge-primary">{{ material.nome }}</span>
+                <span class="material-quantity">{{ "%.2f"|format(material.quantidade_total) }} {{ material.unidade }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if construction_materials.stagnant %}
+    <div class="materials-section">
+        <h3 class="subsection-title">Materiais Parados</h3>
+        <div class="materials-list">
+            {% for material in construction_materials.stagnant %}
+            <div class="material-item material-item-stagnant">
+                <span class="material-badge material-badge-warning">{{ material.nome }}</span>
+                <span class="material-quantity">Sem venda há {{ material.dias_sem_venda }} dia(s)</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="materials-section">
+        <p class="text-muted">TODO: Implementar lista de materiais parados quando insights estiverem disponíveis.</p>
+    </div>
+    {% endif %}
+
+    {% if construction_materials.critical_items %}
+    <div class="materials-section">
+        <h3 class="subsection-title">Itens Críticos (Estoque Baixo)</h3>
+        <div class="materials-list">
+            {% for item in construction_materials.critical_items %}
+            <div class="material-item material-item-critical">
+                <span class="material-badge material-badge-danger">{{ item.nome }}</span>
+                <span class="material-quantity">Estoque: {{ item.estoque_atual }} {{ item.unidade }} | Mínimo: {{ item.estoque_minimo }} {{ item.unidade }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="materials-section">
+        <p class="text-muted">TODO: Implementar lista de itens críticos usando insights de stock alerts quando disponíveis.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
