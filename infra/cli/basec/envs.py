@@ -74,3 +74,13 @@ def validate_env_path(env: str = "production") -> bool:
     return get_env_path(env).exists()
 
 
+def get_project_root() -> Path:
+    """Get the project root directory (basecommerce/).
+    
+    Returns:
+        Path to the project root (parent of infra/)
+    """
+    inventory_path = get_inventory_path()
+    # inventory.yaml is in infra/, project root is parent of infra/
+    return inventory_path.parent.parent
+

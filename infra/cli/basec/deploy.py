@@ -61,6 +61,16 @@ def deploy_droplet(name: str, config, env: str = "production", tag: Optional[str
             try:
                 remote_dir = docker.remote_dir
                 local_edge_path = get_edge_path(env)
+                from basec.envs import get_project_root
+                project_root = get_project_root()
+                
+                docker.ssh.connect()
+                
+                # Always sync docker-compose.yml
+                with spinner("Syncing docker-compose.yml..."):
+                    docker_compose_remote = f"{remote_dir}/docker-compose.yml"
+                    docker.ssh.upload_file(local_edge_path / "docker-compose.yml", docker_compose_remote)
+                    print_success("✓ Synced docker-compose.yml")
                 
                 # Check if we need to sync files (detect old config with conf.d mount or missing templates)
                 exit_code1, stdout1, _ = docker.ssh.execute(
@@ -72,10 +82,6 @@ def deploy_droplet(name: str, config, env: str = "production", tag: Optional[str
                 if "NEEDS_SYNC" in stdout1:
                     # Server has old config or missing template, sync critical files
                     with spinner("Syncing nginx configuration files..."):
-                        # Upload docker-compose.yml
-                        docker_compose_remote = f"{remote_dir}/docker-compose.yml"
-                        docker.ssh.upload_file(local_edge_path / "docker-compose.yml", docker_compose_remote)
-                        
                         # Upload nginx templates directory
                         templates_local = local_edge_path / "nginx" / "templates" / "default.conf.template"
                         if templates_local.exists():
@@ -90,6 +96,43 @@ def deploy_droplet(name: str, config, env: str = "production", tag: Optional[str
                         
                         print_success("✓ Synced nginx configuration files")
                 
+                # Sync source code needed for building auth service
+                with spinner("Syncing source code for auth build..."):
+                    try:
+                        # Sync basecore package (needed by auth Dockerfile)
+                        basecore_local = project_root / "packages" / "basecore"
+                        if basecore_local.exists():
+                            docker.ssh.upload_directory(
+                                basecore_local,
+                                f"{remote_dir}/packages/basecore"
+                            )
+                            print_success("✓ Synced basecore package")
+                        
+                        # Sync auth service source code
+                        auth_src_local = project_root / "apps" / "auth" / "src"
+                        if auth_src_local.exists():
+                            docker.ssh.upload_directory(
+                                auth_src_local,
+                                f"{remote_dir}/apps/auth/src"
+                            )
+                            print_success("✓ Synced auth source code")
+                        
+                        # Sync auth Dockerfile
+                        auth_dockerfile_local = project_root / "apps" / "auth" / "Dockerfile"
+                        if auth_dockerfile_local.exists():
+                            docker.ssh.execute(
+                                f"mkdir -p {shlex.quote(remote_dir)}/apps/auth",
+                                check=False,
+                            )
+                            docker.ssh.upload_file(
+                                auth_dockerfile_local,
+                                f"{remote_dir}/apps/auth/Dockerfile"
+                            )
+                            print_success("✓ Synced auth Dockerfile")
+                        
+                    except Exception as e:
+                        print_warning(f"⚠ Failed to sync source code: {e}")
+                
                 # Verify VERTICAL_HOST is set in .env
                 exit_code2, stdout2, _ = docker.ssh.execute(
                     f"cd {shlex.quote(remote_dir)} && test -f .env && grep -q '^VERTICAL_HOST=' .env 2>/dev/null && echo 'VERTICAL_HOST_SET' || echo 'VERTICAL_HOST_MISSING'",
@@ -100,8 +143,11 @@ def deploy_droplet(name: str, config, env: str = "production", tag: Optional[str
                 if "VERTICAL_HOST_MISSING" in stdout2:
                     print_error("⚠ WARNING: VERTICAL_HOST not set in .env file on server")
                     print_error("  Please ensure .env file has: VERTICAL_HOST=191.252.120.176")
+                
+                docker.ssh.disconnect()
             except Exception as e:
                 # File sync/verification failed - continue anyway, might work with git or manual setup
+                print_warning(f"⚠ File sync failed: {e}")
                 pass
         
         # Set image tags if provided
@@ -112,8 +158,8 @@ def deploy_droplet(name: str, config, env: str = "production", tag: Optional[str
         # For edge role with auth service, rebuild to pick up code changes
         if config.role == "edge":
             try:
-                with spinner("Rebuilding auth service..."):
-                    docker._run_compose("build auth", capture_output=False)
+                with spinner("Rebuilding auth service (no cache)..."):
+                    docker._run_compose("build --no-cache auth", capture_output=False)
             except Exception:
                 # Build failed - continue anyway, might use cached image
                 pass

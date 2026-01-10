@@ -33,7 +33,7 @@ services:
 
   auth:
     build:
-      context: .
+      context: .  # Root of repository (docker-compose.yml is in root when deployed)
       dockerfile: apps/auth/Dockerfile
     container_name: basecommerce-auth
     restart: unless-stopped

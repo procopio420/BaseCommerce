@@ -125,10 +125,11 @@ def redeploy_droplet(
         # Step 4: Sync all configuration files (especially for edge)
         if config.role == "edge":
             with spinner("Syncing all configuration files..."):
-                from basec.envs import get_edge_path
+                from basec.envs import get_edge_path, get_project_root
                 docker.ssh.connect()
                 
                 local_edge_path = get_edge_path(env)
+                project_root = get_project_root()
                 
                 # Sync docker-compose.yml
                 try:
@@ -169,6 +170,45 @@ def redeploy_droplet(
                     print_success("✓ Configuration files synced")
                 except Exception as e:
                     print_warning(f"⚠ Failed to sync some files: {e}")
+                
+                # Sync source code needed for building auth service
+                with spinner("Syncing source code for auth build..."):
+                    try:
+                        # Sync basecore package (needed by auth Dockerfile)
+                        basecore_local = project_root / "packages" / "basecore"
+                        if basecore_local.exists():
+                            docker.ssh.upload_directory(
+                                basecore_local,
+                                f"{remote_dir}/packages/basecore"
+                            )
+                            print_success("✓ Synced basecore package")
+                        
+                        # Sync auth service source code
+                        auth_src_local = project_root / "apps" / "auth" / "src"
+                        if auth_src_local.exists():
+                            docker.ssh.upload_directory(
+                                auth_src_local,
+                                f"{remote_dir}/apps/auth/src"
+                            )
+                            print_success("✓ Synced auth source code")
+                        
+                        # Sync auth Dockerfile
+                        auth_dockerfile_local = project_root / "apps" / "auth" / "Dockerfile"
+                        if auth_dockerfile_local.exists():
+                            docker.ssh.execute(
+                                f"mkdir -p {shlex.quote(remote_dir)}/apps/auth",
+                                check=False,
+                            )
+                            docker.ssh.upload_file(
+                                auth_dockerfile_local,
+                                f"{remote_dir}/apps/auth/Dockerfile"
+                            )
+                            print_success("✓ Synced auth Dockerfile")
+                        
+                    except Exception as e:
+                        print_warning(f"⚠ Failed to sync source code: {e}")
+                        import traceback
+                        traceback.print_exc()
                 
                 docker.ssh.disconnect()
         

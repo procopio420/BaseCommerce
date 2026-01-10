@@ -2,34 +2,26 @@ from datetime import datetime, timedelta
 
 import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from construction_app.core.config import settings
 
-# Configura o contexto com bcrypt explicitamente
-pwd_context = CryptContext(schemes=["bcrypt"], bcrypt__rounds=12, deprecated="auto")
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except Exception:
-        # Fallback para bcrypt direto se passlib falhar
-        return bcrypt.checkpw(
-            plain_password.encode("utf-8"),
-            hashed_password.encode("utf-8")
-            if isinstance(hashed_password, str)
-            else hashed_password,
-        )
+    """Verify a password against a bcrypt hash."""
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode("utf-8")
+    
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password,
+    )
 
 
 def get_password_hash(password: str) -> str:
-    try:
-        return pwd_context.hash(password)
-    except Exception:
-        # Fallback para bcrypt direto se passlib falhar
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    """Generate a bcrypt hash for a password."""
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):

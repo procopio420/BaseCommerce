@@ -340,9 +340,51 @@ class SSHClientWrapper:
             self.sftp = self.client.open_sftp()
         
         try:
+            # Ensure remote directory exists
+            remote_dir = "/".join(remote_path.split("/")[:-1])
+            if remote_dir:
+                self.execute(f"mkdir -p {remote_dir}", check=False)
+            
             self.sftp.put(str(local_path), remote_path)
         except Exception as e:
             raise RuntimeError(f"Failed to upload {local_path} to {remote_path}: {e}")
+    
+    def upload_directory(self, local_dir: Path, remote_base: str) -> None:
+        """Upload a directory recursively to the remote host.
+        
+        Args:
+            local_dir: Local directory path to upload
+            remote_base: Remote base directory path (directory will be created/uploaded here)
+        """
+        if self.client is None:
+            self.connect()
+        
+        if not self.sftp:
+            self.sftp = self.client.open_sftp()
+        
+        if not local_dir.is_dir():
+            raise ValueError(f"{local_dir} is not a directory")
+        
+        # Ensure remote base directory exists
+        self.execute(f"mkdir -p {remote_base}", check=False)
+        
+        # Walk local directory and upload files
+        for local_path in local_dir.rglob("*"):
+            if local_path.is_file():
+                # Get relative path from local_dir
+                rel_path = local_path.relative_to(local_dir)
+                remote_path = f"{remote_base}/{rel_path.as_posix()}"
+                
+                # Ensure remote directory exists
+                remote_dir = "/".join(remote_path.split("/")[:-1])
+                if remote_dir:
+                    self.execute(f"mkdir -p {remote_dir}", check=False)
+                
+                # Upload file
+                try:
+                    self.sftp.put(str(local_path), remote_path)
+                except Exception as e:
+                    raise RuntimeError(f"Failed to upload {local_path} to {remote_path}: {e}")
     
     def download_file(self, remote_path: str, local_path: Path) -> None:
         """Download a file from the remote host."""
