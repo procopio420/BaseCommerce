@@ -1,0 +1,50 @@
+{# list_row.html - Linhas de lista consistentes #}
+{# Usage: {% include "partials/list_row.html" with items=[...], columns=[...] %} #}
+
+{% set items = items|default([]) %}
+{% set columns = columns|default([]) %}
+{% set row_href = row_href|default(None) %}
+{% set row_id = row_id|default(None) %}
+
+{% if items %}
+<div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+    <div class="divide-y divide-gray-200">
+        {% for item in items %}
+        {% set item_id = row_id|default(loop.index) %}
+        <div class="{% if row_href %}cursor-pointer hover:bg-gray-50{% endif %}" 
+             {% if row_href %}hx-get="{{ row_href|replace('{id}', item_id|string) }}" hx-target="#details-panel"{% endif %}>
+            <div class="px-6 py-4">
+                <div class="flex items-center justify-between">
+                    {% for col in columns %}
+                    <div class="flex-1 {% if not loop.last %}mr-4{% endif %}">
+                        {% if col.label %}
+                        <p class="text-xs font-medium text-gray-500 mb-1">{{ col.label }}</p>
+                        {% endif %}
+                        <p class="text-sm {% if col.bold %}font-semibold{% endif %} text-gray-900">
+                            {% if col.field %}
+                                {% if col.type == "badge" %}
+                                    {% include "partials/badge.html" with text=item[col.field], variant=item.get(col.variant_field, "default") %}
+                                {% elif col.type == "currency" %}
+                                    R$ {{ "%.2f"|format(item[col.field]|default(0)) }}
+                                {% elif col.type == "date" %}
+                                    {{ item[col.field].strftime('%d/%m/%Y') if item[col.field] else '-' }}
+                                {% else %}
+                                    {{ item[col.field]|default('-') }}
+                                {% endif %}
+                            {% else %}
+                                {{ col.content|safe if col.content else '-' }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+{% include "partials/empty_state.html" %}
+{% endif %}
+
+

@@ -1,0 +1,42 @@
+{% if wizard_state and wizard_state.itens %}
+<div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-900 mb-3">Itens no Carrinho ({{ wizard_state.itens|length }})</h3>
+    <div class="space-y-2">
+        {% for item in wizard_state.itens %}
+        <div class="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200">
+            <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                    <p class="text-sm font-medium text-gray-900">
+                        {% if summary and summary.produtos_info %}
+                            {% set produto_info = summary.produtos_info.get(item.produto_id|string, None) %}
+                            {% if produto_info %}
+                                {{ produto_info.nome }}
+                            {% else %}
+                                Produto {{ item.produto_id|string|truncate(8, True, '') }}
+                            {% endif %}
+                        {% else %}
+                            Produto {{ item.produto_id|string|truncate(8, True, '') }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="mt-1 flex items-center space-x-4 text-xs text-gray-500">
+                    <span>Qtd: {{ item.quantidade }}</span>
+                    <span>Preço: R$ {{ "%.2f"|format(item.preco_unitario|float|default(0)) }}</span>
+                    <span class="font-medium text-gray-700">Total: R$ {{ "%.2f"|format((item.quantidade|float|default(0) * item.preco_unitario|float|default(0))) }}</span>
+                </div>
+            </div>
+            <form hx-post="/web/cotacoes/new/remove-item"
+                  hx-target="#summary-content"
+                  hx-swap="innerHTML"
+                  class="ml-4">
+                <input type="hidden" name="item_index" value="{{ loop.index0 }}">
+                <button type="submit" class="text-red-600 hover:text-red-800 text-sm font-medium" title="Remover item">
+                    ×
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+

@@ -23,3 +23,4 @@ class Tenant(Base, BaseModelMixin):
     users = relationship("User", back_populates="tenant")
 
 
+

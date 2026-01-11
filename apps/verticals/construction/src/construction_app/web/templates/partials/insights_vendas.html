@@ -1,0 +1,56 @@
+{% if sales_suggestions %}
+<div id="sales-suggestions-list" class="space-y-4">
+    <h3 class="text-lg font-semibold text-gray-900 mb-3">Sugestões de Venda</h3>
+    <div class="space-y-3">
+        {% for sugg in sales_suggestions %}
+        <div class="bg-white rounded-lg border border-gray-200 p-4">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
+                            {% if sugg.suggestion_type == 'complementary' %}bg-blue-100 text-blue-800
+                            {% elif sugg.suggestion_type == 'substitute' %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {% if sugg.suggestion_type == 'complementary' %}Complementar
+                            {% elif sugg.suggestion_type == 'substitute' %}Substituto
+                            {% else %}Pacote{% endif %}
+                        </span>
+                    </div>
+                    {% if sugg.source_produto %}
+                    <h4 class="font-medium text-gray-900">Produto: {{ sugg.source_produto.nome }}</h4>
+                    {% endif %}
+                    {% if sugg.suggested_produto %}
+                    <p class="text-sm text-gray-600 mt-1">
+                        Sugerido: {{ sugg.suggested_produto.nome }}
+                    </p>
+                    {% endif %}
+                    {% if sugg.frequency %}
+                    <p class="text-xs text-gray-500 mt-1">Frequência: {{ sugg.frequency }}</p>
+                    {% endif %}
+                    {% if sugg.explanation %}
+                    <p class="text-sm text-gray-600 mt-2">{{ sugg.explanation }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if has_more and next_cursor %}
+    {% set url_path = "/web/insights/vendas" %}
+    <div class="mt-6 text-center">
+        <button 
+            hx-get="{{ url_path }}?cursor={{ next_cursor }}"
+            hx-target="#sales-suggestions-list"
+            hx-swap="beforeend"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Carregar mais
+        </button>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="text-center py-12">
+    <p class="text-gray-500">Nenhuma sugestão de venda encontrada.</p>
+</div>
+{% endif %}

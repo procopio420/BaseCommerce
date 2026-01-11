@@ -1,0 +1,167 @@
+{% extends "layout.html" %}
+
+{% block title %}UI Kit - {{ tenant_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Design System - UI Kit</h1>
+        <p class="mt-2 text-gray-600">Componentes reutilizáveis do BaseCommerce</p>
+    </div>
+
+    <!-- Buttons -->
+    <section class="mb-12">
+        {% include "partials/section_header.html" with title="Buttons", subtitle="Variações de botões" %}
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+            <div class="space-y-4">
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Variants</h3>
+                    <div class="flex flex-wrap gap-3">
+                        {% include "partials/button.html" with variant="primary", text="Primary", size="md" %}
+                        {% include "partials/button.html" with variant="secondary", text="Secondary", size="md" %}
+                        {% include "partials/button.html" with variant="outline", text="Outline", size="md" %}
+                        {% include "partials/button.html" with variant="danger", text="Danger", size="md" %}
+                        {% include "partials/button.html" with variant="ghost", text="Ghost", size="md" %}
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Sizes</h3>
+                    <div class="flex flex-wrap items-center gap-3">
+                        {% include "partials/button.html" with variant="primary", text="Small", size="sm" %}
+                        {% include "partials/button.html" with variant="primary", text="Medium", size="md" %}
+                        {% include "partials/button.html" with variant="primary", text="Large", size="lg" %}
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">States</h3>
+                    <div class="flex flex-wrap gap-3">
+                        {% include "partials/button.html" with variant="primary", text="Normal", size="md" %}
+                        {% include "partials/button.html" with variant="primary", text="Disabled", size="md", disabled=true %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cards -->
+    <section class="mb-12">
+        {% include "partials/section_header.html" with title="Cards", subtitle="Cards consistentes" %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% include "partials/card.html" with title="Card com Título", content="Conteúdo do card aqui." %}
+            {% include "partials/card.html" with title="Card com Footer", content="Conteúdo do card.", footer="<p class='text-sm text-gray-500'>Footer do card</p>" %}
+            {% include "partials/card.html" with content="Card simples sem título." %}
+        </div>
+    </section>
+
+    <!-- Badges -->
+    <section class="mb-12">
+        {% include "partials/section_header.html" with title="Badges", subtitle="Status chips" %}
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+            <div class="space-y-4">
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Variants</h3>
+                    <div class="flex flex-wrap gap-2">
+                        {% include "partials/badge.html" with text="Default", variant="default" %}
+                        {% include "partials/badge.html" with text="Primary", variant="primary" %}
+                        {% include "partials/badge.html" with text="Success", variant="success" %}
+                        {% include "partials/badge.html" with text="Warning", variant="warning" %}
+                        {% include "partials/badge.html" with text="Danger", variant="danger" %}
+                        {% include "partials/badge.html" with text="Info", variant="info" %}
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Status de Cotações</h3>
+                    <div class="flex flex-wrap gap-2">
+                        {% include "partials/badge.html" with text="Rascunho", variant="rascunho" %}
+                        {% include "partials/badge.html" with text="Enviada", variant="enviada" %}
+                        {% include "partials/badge.html" with text="Aprovada", variant="aprovada" %}
+                        {% include "partials/badge.html" with text="Convertida", variant="convertida" %}
+                        {% include "partials/badge.html" with text="Cancelada", variant="cancelada" %}
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Status de Pedidos</h3>
+                    <div class="flex flex-wrap gap-2">
+                        {% include "partials/badge.html" with text="Pendente", variant="pendente" %}
+                        {% include "partials/badge.html" with text="Em Preparação", variant="em_preparacao" %}
+                        {% include "partials/badge.html" with text="Saiu Entrega", variant="saiu_entrega" %}
+                        {% include "partials/badge.html" with text="Entregue", variant="entregue" %}
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Sizes</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        {% include "partials/badge.html" with text="Small", variant="primary", size="sm" %}
+                        {% include "partials/badge.html" with text="Medium", variant="primary", size="md" %}
+                        {% include "partials/badge.html" with text="Large", variant="primary", size="lg" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stat Cards -->
+    <section class="mb-12">
+        {% include "partials/section_header.html" with title="Stat Cards", subtitle="Cards de métricas/KPI" %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% set icon1 = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' %}
+            {% include "partials/stat_card.html" with label="Vendas da Semana", value="R$ 5.200", trend="+12%", icon=icon1 %}
+            {% set icon2 = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>' %}
+            {% include "partials/stat_card.html" with label="Orçamentos Ativos", value="12", description="3 rascunho, 5 enviadas, 4 aprovadas", icon=icon2 %}
+            {% set icon3 = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>' %}
+            {% include "partials/stat_card.html" with label="Top Produtos", value="5", description="Últimos 30 dias", icon=icon3 %}
+        </div>
+    </section>
+
+    <!-- Alert Items -->
+    <section class="mb-12">
+        {% include "partials/section_header.html" with title="Alert Items", subtitle="Alertas acionáveis" %}
+        <div class="space-y-4">
+            {% set alert_warning = {"severity": "warning", "title": "Cimento CP II abaixo do estoque ideal", "message": "Estoque atual: 50 sacos | Estoque mínimo recomendado: 150 sacos", "days_until_rupture": 2, "actions": [{"label": "Gerar Pedido de Compra", "href": "/web/alerts/1/create-purchase-order"}, {"label": "Ajustar Estoque", "href": "/web/alerts/1/adjust-stock"}]} %}
+            {% include "partials/alert_item.html" with alert=alert_warning %}
+            {% set alert_info = {"severity": "info", "title": "Preço médio do cimento subiu 6% nos últimos 14 dias", "message": "Considere ajustar preço de venda ou buscar fornecedores alternativos", "actions": [{"label": "Ajustar Preços", "href": "/web/alerts/2/adjust-price"}]} %}
+            {% include "partials/alert_item.html" with alert=alert_info %}
+            {% set alert_success = {"severity": "success", "title": "Areia média com alta procura e boa margem", "message": "Produto em alta demanda. Margem atual: 32%", "actions": [{"label": "Ver Oportunidades", "href": "/web/insights"}]} %}
+            {% include "partials/alert_item.html" with alert=alert_success %}
+        </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="mb-12">
+        {% include "partials/section_header.html" with title="Quick Actions", subtitle="Cards de ação rápida" %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% set icon_doc = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>' %}
+            {% include "partials/quick_action.html" with title="Criar novo orçamento", description="Crie um orçamento para sua obra ou cliente", href="/web/cotacoes/new", icon=icon_doc, variant="primary" %}
+            {% set icon_cart = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>' %}
+            {% include "partials/quick_action.html" with title="Novo pedido", description="Criar pedido a partir de cotação aprovada", href="/web/pedidos/new", icon=icon_cart, variant="secondary" %}
+            {% set icon_box = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>' %}
+            {% include "partials/quick_action.html" with title="Registrar estoque", description="Registrar entrada de materiais", href="/web/estoque/entrada", icon=icon_box, variant="success" %}
+            {% set icon_chart = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>' %}
+            {% include "partials/quick_action.html" with title="Ver insights", description="Análises e recomendações", href="/web/insights", icon=icon_chart, variant="warning" %}
+        </div>
+    </section>
+
+    <!-- Empty States -->
+    <section class="mb-12">
+        {% include "partials/section_header.html" with title="Empty States", subtitle="Estados vazios com CTAs" %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% include "partials/empty_state.html" with title="Nenhuma cotação encontrada", message="Comece criando sua primeira cotação.", cta_text="Criar cotação", cta_href="/web/cotacoes/new" %}
+            {% set icon_empty = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>' %}
+            {% include "partials/empty_state.html" with title="Nenhum pedido", message="Ainda não há pedidos registrados.", cta_text="Ver cotações", cta_href="/web/cotacoes", icon=icon_empty %}
+        </div>
+    </section>
+
+    <!-- Recommendation Items -->
+    <section class="mb-12">
+        {% include "partials/section_header.html" with title="Recommendation Items", subtitle="Items de recomendação" %}
+        <div class="space-y-4">
+            {% set rec1 = {"title": "Repor estoque sugerido", "description": "3 material(is) com estoque abaixo do ideal", "priority": "high", "action_href": "/web/produtos", "action_label": "Ver materiais"} %}
+            {% include "partials/recommendation_item.html" with recommendation=rec1 %}
+            {% set rec2 = {"title": "Ajustar preços", "description": "Materiais com variação de preço recente", "priority": "medium", "action_href": "/web/produtos", "action_label": "Ajustar"} %}
+            {% include "partials/recommendation_item.html" with recommendation=rec2 %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+

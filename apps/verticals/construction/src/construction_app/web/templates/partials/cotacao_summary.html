@@ -1,0 +1,39 @@
+{% if summary %}
+<div class="space-y-2 text-sm">
+    {% if wizard_state and wizard_state.itens %}
+    <div class="mb-3 pb-3 border-b border-gray-200">
+        <p class="text-xs text-gray-500 mb-1">Itens no carrinho: <span class="font-medium text-gray-900">{{ wizard_state.itens|length }}</span></p>
+    </div>
+    {% endif %}
+    <div class="flex justify-between">
+        <span class="text-gray-600">Subtotal:</span>
+        <span class="font-medium text-gray-900">R$ {{ "%.2f"|format(summary.subtotal) }}</span>
+    </div>
+    {% if summary.desconto_percentual > 0 %}
+    <div class="flex justify-between">
+        <span class="text-gray-600">Desconto ({{ "%.1f"|format(summary.desconto_percentual) }}%):</span>
+        <span class="font-medium text-gray-900">- R$ {{ "%.2f"|format(summary.desconto_valor) }}</span>
+    </div>
+    {% endif %}
+    <div class="border-t border-gray-200 pt-2 mt-2">
+        <div class="flex justify-between">
+            <span class="font-semibold text-gray-900">Total:</span>
+            <span class="font-bold text-lg text-primary">R$ {{ "%.2f"|format(summary.total) }}</span>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="space-y-2 text-sm">
+    <div class="flex justify-between">
+        <span class="text-gray-600">Subtotal:</span>
+        <span class="font-medium">R$ 0,00</span>
+    </div>
+    <div class="border-t border-gray-200 pt-2 mt-2">
+        <div class="flex justify-between">
+            <span class="font-semibold text-gray-900">Total:</span>
+            <span class="font-bold text-lg text-primary">R$ 0,00</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+

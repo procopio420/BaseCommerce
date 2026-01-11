@@ -86,3 +86,4 @@ Os scripts em `/opt/basecommerce/scripts/` nos droplets (bootstrap.sh, update.sh
 5. 🔄 Treinar equipe no uso do CLI
 
 
+

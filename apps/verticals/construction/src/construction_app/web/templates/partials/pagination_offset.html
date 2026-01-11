@@ -1,0 +1,82 @@
+{% if total_pages and total_pages > 1 %}
+{% set url_path = url_path|default(request.url.path) %}
+<nav class="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+    <div class="flex flex-1 justify-between sm:hidden">
+        {% if current_page > 1 %}
+        <a href="#" 
+           hx-get="{{ url_path }}?skip={{ (current_page - 2) * limit }}{% if filters and filters.status %}&status={{ filters.status }}{% endif %}{% if filters and filters.cliente_id %}&cliente_id={{ filters.cliente_id }}{% endif %}{% if filters and filters.periodo %}&periodo={{ filters.periodo }}{% endif %}"
+           hx-target="#{{ target_id|default('cotacoes-table') }}"
+           hx-swap="innerHTML"
+           class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Anterior
+        </a>
+        {% endif %}
+        {% if current_page < total_pages %}
+        <a href="#" 
+           hx-get="{{ url_path }}?skip={{ current_page * limit }}{% if filters and filters.status %}&status={{ filters.status }}{% endif %}{% if filters and filters.cliente_id %}&cliente_id={{ filters.cliente_id }}{% endif %}{% if filters and filters.periodo %}&periodo={{ filters.periodo }}{% endif %}"
+           hx-target="#{{ target_id|default('cotacoes-table') }}"
+           hx-swap="innerHTML"
+           class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Próximo
+        </a>
+        {% endif %}
+    </div>
+    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                Página <span class="font-medium">{{ current_page }}</span> de <span class="font-medium">{{ total_pages }}</span>
+            </p>
+        </div>
+        <div>
+            <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                {% if current_page > 1 %}
+                <a href="#" 
+                   hx-get="{{ url_path }}?skip={{ (current_page - 2) * limit }}{% if filters and filters.status %}&status={{ filters.status }}{% endif %}{% if filters and filters.cliente_id %}&cliente_id={{ filters.cliente_id }}{% endif %}{% if filters and filters.periodo %}&periodo={{ filters.periodo }}{% endif %}"
+                   hx-target="#{{ target_id|default('cotacoes-table') }}"
+                   hx-swap="innerHTML"
+                   class="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">Anterior</span>
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+                    </svg>
+                </a>
+                {% endif %}
+                
+                {% for page in range(1, total_pages + 1) %}
+                    {% if page == current_page %}
+                    <span aria-current="page" class="relative z-10 inline-flex items-center border border-primary bg-primary-light px-4 py-2 text-sm font-medium text-primary">
+                        {{ page }}
+                    </span>
+                    {% elif page == 1 or page == total_pages or (page >= current_page - 1 and page <= current_page + 1) %}
+                    <a href="#" 
+                       hx-get="{{ url_path }}?skip={{ (page - 1) * limit }}{% if filters and filters.status %}&status={{ filters.status }}{% endif %}{% if filters and filters.cliente_id %}&cliente_id={{ filters.cliente_id }}{% endif %}{% if filters and filters.periodo %}&periodo={{ filters.periodo }}{% endif %}"
+                       hx-target="#{{ target_id|default('cotacoes-table') }}"
+                       hx-swap="innerHTML"
+                       class="relative inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        {{ page }}
+                    </a>
+                    {% elif page == current_page - 2 or page == current_page + 2 %}
+                    <span class="relative inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700">
+                        ...
+                    </span>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if current_page < total_pages %}
+                <a href="#" 
+                   hx-get="{{ url_path }}?skip={{ current_page * limit }}{% if filters and filters.status %}&status={{ filters.status }}{% endif %}{% if filters and filters.cliente_id %}&cliente_id={{ filters.cliente_id }}{% endif %}{% if filters and filters.periodo %}&periodo={{ filters.periodo }}{% endif %}"
+                   hx-target="#{{ target_id|default('cotacoes-table') }}"
+                   hx-swap="innerHTML"
+                   class="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">Próximo</span>
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</nav>
+{% endif %}
+

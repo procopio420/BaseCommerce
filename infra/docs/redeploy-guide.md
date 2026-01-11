@@ -291,3 +291,4 @@ Os seguintes arquivos **não são afetados** pelo redeploy:
 
 **Atenção:** Se usar `docker compose down --volumes`, volumes serão removidos!
 
+

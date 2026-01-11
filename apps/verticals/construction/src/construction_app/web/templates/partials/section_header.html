@@ -1,0 +1,22 @@
+{# section_header.html - Headers de seção padronizados #}
+{# Usage: {% include "partials/section_header.html" with title="Section", subtitle="Subtitle", action="Action" %} #}
+
+{% set title = title|default("Section") %}
+{% set subtitle = subtitle|default(None) %}
+{% set action = action|default(None) %}
+
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900">{{ title }}</h2>
+        {% if subtitle %}
+        <p class="mt-1 text-sm text-gray-500">{{ subtitle }}</p>
+        {% endif %}
+    </div>
+    {% if action %}
+    <div>
+        {{ action|safe }}
+    </div>
+    {% endif %}
+</div>
+
+

@@ -1,0 +1,42 @@
+{% if produtos %}
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm max-h-96 overflow-y-auto">
+    {% for produto in produtos %}
+    <div class="p-4 border-b border-gray-100 hover:bg-gray-50">
+        <div class="flex items-center justify-between">
+            <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                    <h4 class="font-medium text-gray-900">{{ produto.nome }}</h4>
+                    {% if produto.codigo %}
+                    <span class="text-xs text-gray-500">({{ produto.codigo }})</span>
+                    {% endif %}
+                </div>
+                {% if produto.descricao %}
+                <p class="text-sm text-gray-600 mt-1">{{ produto.descricao[:100] }}{% if produto.descricao|length > 100 %}...{% endif %}</p>
+                {% endif %}
+                <div class="flex items-center space-x-4 mt-2">
+                    <span class="text-sm font-medium text-gray-900">R$ {{ "%.2f"|format(produto.preco_base) }}</span>
+                    <span class="text-xs text-gray-500">{{ produto.unidade }}</span>
+                </div>
+            </div>
+            <form hx-post="/web/cotacoes/new/add-item"
+                  hx-target="#summary-content"
+                  hx-swap="innerHTML"
+                  class="ml-4">
+                <input type="hidden" name="produto_id" value="{{ produto.id }}">
+                <input type="hidden" name="quantidade" value="1">
+                <input type="hidden" name="preco_unitario" value="{{ produto.preco_base }}">
+                <button type="submit" class="px-3 py-1.5 bg-primary text-white text-sm rounded-md hover:bg-primary-hover">
+                    Adicionar
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% elif search_query and search_query|length >= 2 %}
+<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+    <p class="text-sm text-yellow-800">Nenhum produto encontrado para "{{ search_query }}".</p>
+</div>
+{% endif %}
+
+

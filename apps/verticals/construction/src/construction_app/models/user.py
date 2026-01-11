@@ -27,3 +27,4 @@ class User(Base, BaseModelMixin):
 
     # Note: No relationship with Tenant - managed by auth service
 
+

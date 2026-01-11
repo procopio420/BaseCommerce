@@ -1,0 +1,48 @@
+{# button.html - Botões reutilizáveis #}
+{# Usage: {% include "partials/button.html" with variant="primary", size="md", text="Click me", href="/path" %} #}
+
+{% set variant = variant|default("primary") %}
+{% set size = size|default("md") %}
+{% set text = text|default("Button") %}
+{% set href = href|default(None) %}
+{% set type = type|default("button") %}
+{% set disabled = disabled|default(false) %}
+{% set icon = icon|default(None) %}
+{% set hx_get = hx_get|default(None) %}
+{% set hx_post = hx_post|default(None) %}
+{% set hx_target = hx_target|default(None) %}
+
+{% set variant_classes = {
+    "primary": "bg-primary text-white hover:bg-primary-hover border-primary",
+    "secondary": "bg-gray-100 text-gray-900 hover:bg-gray-200 border-gray-300",
+    "outline": "bg-white text-primary border-primary hover:bg-primary-light",
+    "danger": "bg-red-600 text-white hover:bg-red-700 border-red-600",
+    "ghost": "bg-transparent text-gray-700 hover:bg-gray-100 border-transparent"
+} %}
+
+{% set size_classes = {
+    "sm": "px-3 py-1.5 text-sm",
+    "md": "px-4 py-2 text-base",
+    "lg": "px-6 py-3 text-lg"
+} %}
+
+{% set base_classes = "inline-flex items-center justify-center gap-2 font-medium rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed" %}
+
+{% set classes = base_classes ~ " " ~ variant_classes[variant] ~ " " ~ size_classes[size] %}
+
+{% if href %}
+<a href="{{ href }}" class="{{ classes }}" {% if disabled %}aria-disabled="true" tabindex="-1"{% endif %}>
+    {% if icon %}<span>{{ icon|safe }}</span>{% endif %}
+    {{ text }}
+</a>
+{% else %}
+<button type="{{ type }}" class="{{ classes }}" {% if disabled %}disabled{% endif %}
+    {% if hx_get %}hx-get="{{ hx_get }}"{% endif %}
+    {% if hx_post %}hx-post="{{ hx_post }}"{% endif %}
+    {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}>
+    {% if icon %}<span>{{ icon|safe }}</span>{% endif %}
+    {{ text }}
+</button>
+{% endif %}
+
+

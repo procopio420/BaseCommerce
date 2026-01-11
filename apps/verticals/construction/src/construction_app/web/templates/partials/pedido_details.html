@@ -1,0 +1,65 @@
+<!-- Header -->
+<div class="drawer-header">
+    <h2 class="text-xl font-semibold text-gray-900">Detalhes do Pedido</h2>
+    <button onclick="window.BaseCommerce.closeDrawer('pedido-details-drawer')" 
+            class="text-gray-400 hover:text-gray-600 focus:outline-none">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    </button>
+</div>
+
+<!-- Content -->
+<div class="drawer-content">
+        {% if pedido %}
+        <div class="space-y-6">
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Informações Gerais</h3>
+                <dl class="grid grid-cols-2 gap-4">
+                    <div>
+                        <dt class="text-xs text-gray-500">Número</dt>
+                        <dd class="text-sm font-medium text-gray-900">{{ pedido.numero or pedido.id }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs text-gray-500">Status</dt>
+                        <dd>{% include "partials/badge.html" with text=pedido.status|replace('_', ' ')|title, variant=pedido.status %}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs text-gray-500">Cliente</dt>
+                        <dd class="text-sm text-gray-900">{{ pedido.cliente.nome if pedido.cliente else '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs text-gray-500">Data</dt>
+                        <dd class="text-sm text-gray-900">{{ pedido.created_at.strftime('%d/%m/%Y %H:%M') }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            {% if pedido.itens %}
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Itens</h3>
+                <div class="space-y-2">
+                    {% for item in pedido.itens %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ item.produto.nome if item.produto else 'Produto' }}</p>
+                            <p class="text-xs text-gray-500">{{ item.quantidade }} {{ item.produto.unidade if item.produto else 'un' }}</p>
+                        </div>
+                        <p class="text-sm font-medium text-gray-900">R$ {{ "%.2f"|format(item.valor_total or 0) }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="border-t border-gray-200 pt-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-lg font-semibold text-gray-900">Total</span>
+                    <span class="text-xl font-bold text-primary">R$ {{ "%.2f"|format(pedido.valor_total or 0) }}</span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">Carregando detalhes...</p>
+        {% endif %}
+</div>

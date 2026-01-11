@@ -1,0 +1,40 @@
+{# quick_action.html - Cards de ação rápida #}
+{# Usage: {% include "partials/quick_action.html" with title="Action", description="Desc", href="/path", icon="..." %} #}
+
+{% set title = title|default("Quick Action") %}
+{% set description = description|default("") %}
+{% set href = href|default("#") %}
+{% set icon = icon|default(None) %}
+{% set variant = variant|default("primary") %}
+
+{% set variant_classes = {
+    "primary": "bg-primary-light text-primary border-primary hover:bg-primary hover:text-white",
+    "secondary": "bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100",
+    "success": "bg-green-50 text-green-700 border-green-300 hover:bg-green-100",
+    "warning": "bg-yellow-50 text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+} %}
+
+<a href="{{ href }}" class="block rounded-lg border p-6 {{ variant_classes[variant] }} transition-colors hover:shadow-md">
+    <div class="flex items-start">
+        {% if icon %}
+        <div class="flex-shrink-0">
+            <div class="flex items-center justify-center h-10 w-10 rounded-lg bg-white/50">
+                {{ icon|safe }}
+            </div>
+        </div>
+        {% endif %}
+        <div class="{% if icon %}ml-4{% endif %} flex-1">
+            <h3 class="text-base font-semibold">{{ title }}</h3>
+            {% if description %}
+            <p class="mt-1 text-sm opacity-90">{{ description }}</p>
+            {% endif %}
+        </div>
+        <div class="flex-shrink-0 ml-4">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </div>
+    </div>
+</a>
+
+

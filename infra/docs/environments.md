@@ -213,3 +213,4 @@ basec logs edge --env staging
 - Verifique se os droplets existem e estão acessíveis via SSH
 
 
+

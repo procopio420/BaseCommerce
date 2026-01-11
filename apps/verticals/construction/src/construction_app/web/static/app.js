@@ -1,0 +1,262 @@
+/**
+ * BaseCommerce - App JavaScript
+ * Minimal JS for tenant theming, toast notifications, and helpers
+ */
+
+(function() {
+    'use strict';
+
+    // =============================================================================
+    // Tenant Theming
+    // =============================================================================
+
+    /**
+     * Load tenant theme from /tenant.json and apply CSS variables
+     */
+    async function loadTenantTheme() {
+        try {
+            const response = await fetch('/tenant.json');
+            if (!response.ok) return;
+            
+            const tenant = await response.json();
+            
+            // Apply CSS variables
+            const root = document.documentElement;
+            if (tenant.primary_color) {
+                root.style.setProperty('--primary-color', tenant.primary_color);
+            }
+            if (tenant.secondary_color) {
+                root.style.setProperty('--secondary-color', tenant.secondary_color);
+            }
+            
+            // Update primary hover (calculated)
+            if (tenant.primary_color) {
+                const hoverColor = adjustColorBrightness(tenant.primary_color, -15);
+                root.style.setProperty('--primary-hover', hoverColor);
+            }
+            
+            // Update primary light (calculated)
+            if (tenant.primary_color) {
+                const lightColor = adjustColorBrightness(tenant.primary_color, 85);
+                root.style.setProperty('--primary-light', lightColor);
+            }
+            
+            // Update logo if exists
+            const logoImg = document.querySelector('#tenant-logo');
+            if (logoImg && tenant.logo_url) {
+                logoImg.src = tenant.logo_url;
+                logoImg.alt = tenant.name || 'Logo';
+            }
+            
+            // Update tenant name in title if exists
+            const tenantNameEl = document.querySelector('#tenant-name');
+            if (tenantNameEl && tenant.name) {
+                tenantNameEl.textContent = tenant.name;
+            }
+            
+        } catch (error) {
+            console.warn('Failed to load tenant theme:', error);
+        }
+    }
+
+    /**
+     * Adjust color brightness (simple implementation)
+     */
+    function adjustColorBrightness(hex, percent) {
+        const num = parseInt(hex.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = Math.min(255, Math.max(0, (num >> 16) + amt));
+        const G = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
+        const B = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
+        return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+    }
+
+    // =============================================================================
+    // Toast Notifications
+    // =============================================================================
+
+    /**
+     * Show toast notification
+     * @param {string} message - Message to display
+     * @param {string} type - Type: 'success', 'error', 'warning', 'info'
+     * @param {number} duration - Duration in ms (default: 5000)
+     */
+    function showToast(message, type = 'info', duration = 5000) {
+        const container = document.getElementById('flash-container') || createToastContainer();
+        
+        const toast = document.createElement('div');
+        toast.className = `flash flash-${type}`;
+        toast.innerHTML = `
+            ${message}
+            <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+        `;
+        
+        container.appendChild(toast);
+        
+        // Auto remove after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, duration);
+        }
+        
+        return toast;
+    }
+
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'flash-container';
+        container.className = 'flash-container';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // =============================================================================
+    // Sidebar Toggle (Mobile)
+    // =============================================================================
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('md:block');
+        }
+    }
+
+    // =============================================================================
+    // Helpers
+    // =============================================================================
+
+    /**
+     * Format currency value
+     */
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(value);
+    }
+
+    /**
+     * Format date
+     */
+    function formatDate(date, format = 'short') {
+        const d = new Date(date);
+        const options = format === 'short' 
+            ? { day: '2-digit', month: '2-digit', year: 'numeric' }
+            : { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+        return new Intl.DateTimeFormat('pt-BR', options).format(d);
+    }
+
+    // =============================================================================
+    // HTMX Event Handlers
+    // =============================================================================
+
+    // Show toast on HTMX response with flash message
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        // Check if response has flash message
+        const flashEl = event.detail.target.querySelector('.flash');
+        if (flashEl) {
+            const message = flashEl.textContent.trim();
+            const type = flashEl.className.includes('flash-success') ? 'success' :
+                        flashEl.className.includes('flash-error') ? 'error' :
+                        flashEl.className.includes('flash-warning') ? 'warning' : 'info';
+            showToast(message, type);
+        }
+    });
+
+    // Handle HTMX errors
+    document.body.addEventListener('htmx:responseError', function(event) {
+        showToast('Erro ao processar requisição. Tente novamente.', 'error');
+    });
+
+    // =============================================================================
+    // Drawer Management
+    // =============================================================================
+
+    function openDrawer(drawerId) {
+        const drawer = document.getElementById(drawerId);
+        const overlay = document.getElementById('pedido-drawer-overlay');
+        
+        if (drawer && overlay) {
+            drawer.classList.add('open');
+            overlay.classList.add('show');
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeDrawer(drawerId) {
+        const drawer = document.getElementById(drawerId);
+        const overlay = document.getElementById('pedido-drawer-overlay');
+        
+        if (drawer && overlay) {
+            drawer.classList.remove('open');
+            overlay.classList.remove('show');
+            
+            // Restore body scroll
+            document.body.style.overflow = '';
+        }
+    }
+
+    function setupDrawer() {
+        // Close drawer when clicking overlay
+        const overlay = document.getElementById('pedido-drawer-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    closeDrawer('pedido-details-drawer');
+                }
+            });
+        }
+        
+        // Close drawer on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const drawer = document.getElementById('pedido-details-drawer');
+                if (drawer && drawer.classList.contains('open')) {
+                    closeDrawer('pedido-details-drawer');
+                }
+            }
+        });
+        
+        // HTMX: Open drawer after loading content
+        document.body.addEventListener('htmx:afterSwap', (event) => {
+            if (event.detail.target.id === 'pedido-details-content') {
+                openDrawer('pedido-details-drawer');
+            }
+        });
+    }
+
+    // =============================================================================
+    // Initialization
+    // =============================================================================
+
+    // Load tenant theme on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTenantTheme();
+            setupDrawer();
+        });
+    } else {
+        loadTenantTheme();
+        setupDrawer();
+    }
+
+    // Expose functions globally
+    window.BaseCommerce = {
+        showToast,
+        toggleSidebar,
+        formatCurrency,
+        formatDate,
+        loadTenantTheme,
+        openDrawer,
+        closeDrawer
+    };
+
+})();
+
+

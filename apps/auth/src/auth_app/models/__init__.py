@@ -6,3 +6,4 @@ from auth_app.models.user import User
 __all__ = ["BaseModelMixin", "Tenant", "User", "TenantBranding"]
 
 
+

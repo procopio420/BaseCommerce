@@ -1,0 +1,36 @@
+{# recommendation_item.html - Items de recomendação #}
+{# Usage: {% include "partials/recommendation_item.html" with recommendation=rec %} #}
+
+{% set recommendation = recommendation|default({}) %}
+{% set title = recommendation.title|default("Recommendation") %}
+{% set description = recommendation.description|default("") %}
+{% set priority = recommendation.priority|default("medium") %}
+{% set action_href = recommendation.action_href|default(None) %}
+{% set action_label = recommendation.action_label|default("Aplicar") %}
+
+<div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+    <div class="flex items-start justify-between">
+        <div class="flex-1">
+            <div class="flex items-center gap-2">
+                <h3 class="text-sm font-semibold text-gray-900">{{ title }}</h3>
+                {% if priority == "high" %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Alta</span>
+                {% elif priority == "medium" %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Média</span>
+                {% endif %}
+            </div>
+            {% if description %}
+            <p class="mt-1 text-sm text-gray-600">{{ description }}</p>
+            {% endif %}
+        </div>
+        {% if action_href %}
+        <div class="ml-4">
+            <a href="{{ action_href }}" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary bg-primary-light rounded-md hover:bg-primary hover:text-white transition-colors">
+                {{ action_label }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
