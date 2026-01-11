@@ -5,134 +5,155 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ tenant_name }}{% endblock %}</title>
     
-    <!-- Branding CSS Variables -->
+    <!-- Tenant Branding CSS Variables -->
     <style>
         :root {
-            --primary-color: {{ branding.primary_color if branding else '#1a73e8' }};
-            --secondary-color: {{ branding.secondary_color if branding else '#ea4335' }};
+            --primary-color: {{ tenant_context.primary_color if tenant_context else '#1a73e8' }};
+            --secondary-color: {{ tenant_context.secondary_color if tenant_context else '#ea4335' }};
             --primary-hover: color-mix(in srgb, var(--primary-color) 85%, black);
             --primary-light: color-mix(in srgb, var(--primary-color) 15%, white);
         }
-        
-        /* Tailwind custom colors integration */
-        .bg-primary { background-color: var(--primary-color); }
-        .text-primary { color: var(--primary-color); }
-        .border-primary { border-color: var(--primary-color); }
-        .hover\:bg-primary:hover { background-color: var(--primary-hover); }
     </style>
-    
-    <!-- Tailwind CSS Play CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: 'var(--primary-color)',
-                        secondary: 'var(--secondary-color)',
-                    }
-                }
-            }
-        }
-    </script>
     
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     
-    <!-- App Styles (mantido para compatibilidade) -->
+    <!-- App Styles (Design System) -->
     <link rel="stylesheet" href="/web/static/app.css">
     
     {% block head %}{% endblock %}
 </head>
-<body hx-boost="true" class="bg-gray-50 min-h-screen">
+<body hx-boost="true">
     <!-- Flash Messages Container -->
-    <div id="flash-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
+    <div id="flash-container" class="flash-container"></div>
 
     {% if user %}
-    <!-- Navigation -->
-    <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Brand -->
-                <div class="flex items-center">
-                    <button id="mobile-menu-button" class="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100" onclick="window.BaseCommerce.toggleSidebar()">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <a href="/web/dashboard" class="flex items-center ml-2 md:ml-0">
-                        {% if branding and branding.logo_url %}
-                        <img id="tenant-logo" src="{{ branding.logo_url }}" alt="{{ tenant_name }}" class="h-8 w-auto">
-                        {% else %}
-                        <span id="tenant-name" class="text-xl font-bold text-primary">{{ tenant_name }}</span>
-                        {% endif %}
-                    </a>
-                </div>
-                
-                <!-- Desktop Menu -->
-                <div class="hidden md:flex md:items-center md:space-x-1">
-                    <a href="/web/dashboard" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/web/dashboard' %}bg-primary text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                        Dashboard
-                    </a>
-                    <a href="/web/cotacoes" class="px-3 py-2 rounded-md text-sm font-medium {% if '/cotacoes' in request.url.path %}bg-primary text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                        Cotações
-                    </a>
-                    <a href="/web/pedidos" class="px-3 py-2 rounded-md text-sm font-medium {% if '/pedidos' in request.url.path %}bg-primary text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                        Pedidos
-                    </a>
-                </div>
-                
-                <!-- User Menu -->
-                <div class="flex items-center space-x-4">
-                    <span class="hidden sm:block text-sm font-medium text-gray-700">{{ user.nome }}</span>
-                    <a href="/web/logout" class="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50">
-                        Sair
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Mobile Menu -->
-        <div id="mobile-menu" class="md:hidden border-t border-gray-200 hidden">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="/web/dashboard" class="block px-3 py-2 rounded-md text-base font-medium {% if request.url.path == '/web/dashboard' %}bg-primary text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+    <!-- TopBar -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <!-- Brand -->
+            <a href="/web/dashboard" class="topbar-brand">
+                {% if tenant_context and tenant_context.logo_url %}
+                <img src="{{ tenant_context.logo_url }}" alt="{{ tenant_name }}" class="topbar-logo">
+                {% else %}
+                <span>{{ tenant_name }}</span>
+                {% endif %}
+            </a>
+            
+            <!-- Desktop Navigation -->
+            <div class="topbar-nav">
+                <a href="/web/dashboard" class="topbar-link {% if request.url.path == '/web/dashboard' %}active{% endif %}">
                     Dashboard
                 </a>
-                <a href="/web/cotacoes" class="block px-3 py-2 rounded-md text-base font-medium {% if '/cotacoes' in request.url.path %}bg-primary text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                <a href="/web/cotacoes" class="topbar-link {% if '/cotacoes' in request.url.path %}active{% endif %}">
                     Cotações
                 </a>
-                <a href="/web/pedidos" class="block px-3 py-2 rounded-md text-base font-medium {% if '/pedidos' in request.url.path %}bg-primary text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                <a href="/web/pedidos" class="topbar-link {% if '/pedidos' in request.url.path %}active{% endif %}">
                     Pedidos
+                </a>
+                <a href="/web/stock" class="topbar-link {% if '/stock' in request.url.path %}active{% endif %}">
+                    Estoque
+                </a>
+                <a href="/web/suppliers" class="topbar-link {% if '/suppliers' in request.url.path %}active{% endif %}">
+                    Fornecedores
+                </a>
+                <a href="/web/customers" class="topbar-link {% if '/customers' in request.url.path %}active{% endif %}">
+                    Clientes
+                </a>
+            </div>
+            
+            <!-- User Menu -->
+            <div class="topbar-user">
+                <span class="text-sm" style="color: var(--color-text-muted);">{{ user.email }}</span>
+                <a href="/web/logout" class="btn btn-outline btn-sm">
+                    Sair
                 </a>
             </div>
         </div>
     </nav>
-    {% endif %}
+
+    <!-- SideNav (Desktop) -->
+    <aside class="sidenav" id="sidenav">
+        <ul class="sidenav-list">
+            <li class="sidenav-item">
+                <a href="/web/dashboard" class="sidenav-link {% if request.url.path == '/web/dashboard' %}active{% endif %}">
+                    <svg class="sidenav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Dashboard
+                </a>
+            </li>
+            <li class="sidenav-item">
+                <a href="/web/cotacoes" class="sidenav-link {% if '/cotacoes' in request.url.path %}active{% endif %}">
+                    <svg class="sidenav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Cotações
+                </a>
+            </li>
+            <li class="sidenav-item">
+                <a href="/web/pedidos" class="sidenav-link {% if '/pedidos' in request.url.path %}active{% endif %}">
+                    <svg class="sidenav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    Pedidos
+                </a>
+            </li>
+            <li class="sidenav-item">
+                <a href="/web/stock" class="sidenav-link {% if '/stock' in request.url.path %}active{% endif %}">
+                    <svg class="sidenav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    Estoque
+                </a>
+            </li>
+            <li class="sidenav-item">
+                <a href="/web/suppliers" class="sidenav-link {% if '/suppliers' in request.url.path %}active{% endif %}">
+                    <svg class="sidenav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Fornecedores
+                </a>
+            </li>
+            <li class="sidenav-item">
+                <a href="/web/customers" class="sidenav-link {% if '/customers' in request.url.path %}active{% endif %}">
+                    <svg class="sidenav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Clientes
+                </a>
+            </li>
+            <li class="sidenav-item">
+                <a href="/web/insights" class="sidenav-link {% if '/insights' in request.url.path %}active{% endif %}">
+                    <svg class="sidenav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Insights
+                </a>
+            </li>
+        </ul>
+    </aside>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="main-content">
         {% block content %}{% endblock %}
     </main>
+    {% else %}
+    <!-- Main Content (no sidebar when not logged in) -->
+    <main class="main-content main-content-full">
+        {% block content %}{% endblock %}
+    </main>
+    {% endif %}
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <p class="text-center text-sm text-gray-500">
-                &copy; 2026 <span id="tenant-name-footer">{{ tenant_name }}</span>. Powered by BaseCommerce.
-            </p>
-        </div>
+    <footer class="footer">
+        <p>
+            &copy; 2026 <span>{{ tenant_name }}</span>. Powered by BaseCommerce.
+        </p>
     </footer>
 
     <!-- App JavaScript -->
     <script src="/web/static/app.js"></script>
-    
-    <!-- Mobile menu toggle -->
-    <script>
-        document.getElementById('mobile-menu-button')?.addEventListener('click', function() {
-            const menu = document.getElementById('mobile-menu');
-            menu?.classList.toggle('hidden');
-        });
-    </script>
     
     {% block scripts %}{% endblock %}
 </body>

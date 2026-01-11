@@ -1,0 +1,83 @@
+{% if stock_alerts or replenishment_suggestions %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Stock Alerts -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Alertas de Estoque</h2>
+        </div>
+        <div class="card-body">
+            {% if stock_alerts %}
+            <div class="grid" style="gap: var(--spacing-3);">
+                {% for alert in stock_alerts %}
+                <div class="alert-card alert-{{ 'danger' if alert.risk_level == 'alto' else 'warning' if alert.risk_level == 'medio' else 'info' }}">
+                    <div class="alert-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="alert-content">
+                        <div class="alert-title">
+                            {{ alert.produto.nome if alert.produto else 'Produto ' + alert.product_id[:8] }}
+                        </div>
+                        <div class="alert-message">
+                            {{ alert.explanation or ('Estoque atual: ' + alert.current_stock + ' | Mínimo: ' + alert.minimum_stock) }}
+                            {% if alert.days_until_rupture %}
+                            <br><span class="text-xs">Ruptura prevista em {{ alert.days_until_rupture }} dia(s)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-title">Nenhum alerta de estoque</div>
+                <div class="empty-state-message">Todos os produtos estão com estoque adequado.</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Replenishment Suggestions -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Sugestões de Reposição</h2>
+        </div>
+        <div class="card-body">
+            {% if replenishment_suggestions %}
+            <div class="grid" style="gap: var(--spacing-3);">
+                {% for suggestion in replenishment_suggestions %}
+                <div class="alert-card alert-info">
+                    <div class="alert-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+                    <div class="alert-content">
+                        <div class="alert-title">
+                            {{ suggestion.produto.nome if suggestion.produto else 'Produto ' + suggestion.product_id[:8] }}
+                        </div>
+                        <div class="alert-message">
+                            {{ suggestion.explanation or ('Sugestão: ' + suggestion.suggested_quantity + ' unidades') }}
+                            <br><span class="text-xs">Estoque atual: {{ suggestion.current_stock }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-title">Nenhuma sugestão de reposição</div>
+                <div class="empty-state-message">Não há sugestões de reposição no momento.</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-title">Nenhum dado de estoque disponível</div>
+    <div class="empty-state-message">Os alertas e sugestões de estoque aparecerão aqui quando disponíveis.</div>
+</div>
+{% endif %}
+

@@ -28,11 +28,11 @@ from construction_app.domain.pedido.exceptions import (
 )
 from construction_app.models.cliente import Cliente
 from construction_app.models.cotacao import Cotacao, CotacaoItem
+from construction_app.models.fornecedor import Fornecedor
 from construction_app.models.obra import Obra
 from construction_app.models.pedido import Pedido, PedidoItem
 from construction_app.models.produto import Produto
-from construction_app.web.deps import UserClaims, get_optional_web_user, require_web_user
-from construction_app.web.middleware import DefaultBranding
+from construction_app.web.deps import UserClaims, get_optional_web_user, require_web_user, get_current_tenant_context
 
 logger = logging.getLogger(__name__)
 
@@ -50,22 +50,41 @@ web_router = APIRouter()
 def get_template_context(
     request: Request,
     user: Optional[UserClaims] = None,
+    db: Optional[Session] = None,
     **extra_context,
 ) -> dict:
     """Build common template context with tenant branding.
     
-    Note: Tenant branding is now fetched client-side via /tenant.json
-    which is served by the auth service.
+    Fetches tenant branding from database using user.tenant_id.
+    Falls back to defaults if tenant or branding not found.
     """
-    tenant_slug = getattr(request.state, "tenant_slug", None)
-    branding = DefaultBranding()
+    # Get tenant context from database
+    if user and db:
+        tenant_context = get_current_tenant_context(user=user, db=db)
+    else:
+        # Fallback to defaults if no user or db
+        tenant_slug = getattr(request.state, "tenant_slug", None)
+        tenant_context = {
+            "name": tenant_slug.capitalize() if tenant_slug else "BaseCommerce",
+            "slug": tenant_slug or "",
+            "logo_url": None,
+            "primary_color": "#1a73e8",
+            "secondary_color": "#ea4335",
+            "feature_flags": {},
+        }
     
     return {
         "request": request,
         "user": user,
-        "tenant_name": tenant_slug.capitalize() if tenant_slug else "BaseCommerce",
-        "tenant_slug": tenant_slug,
-        "branding": branding,
+        "tenant_name": tenant_context["name"],
+        "tenant_slug": tenant_context["slug"],
+        "tenant_context": tenant_context,  # Full context for templates
+        "branding": type("Branding", (), {
+            "logo_url": tenant_context["logo_url"],
+            "primary_color": tenant_context["primary_color"],
+            "secondary_color": tenant_context["secondary_color"],
+            "feature_flags": tenant_context["feature_flags"],
+        })(),  # Backward compatibility with existing templates
         **extra_context,
     }
 
@@ -94,9 +113,10 @@ async def logout_redirect():
 async def ui_kit_page(
     request: Request,
     user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
 ):
     """UI Kit page for design system validation."""
-    context = get_template_context(request, user=user)
+    context = get_template_context(request, user=user, db=db)
     return templates.TemplateResponse("pages/ui_kit.html", context)
 
 
@@ -118,6 +138,7 @@ async def dashboard_page(
     context = get_template_context(
         request,
         user=user,
+        db=db,
         alerts=alerts,
         recommended_actions=recommended_actions,
         business_overview=business_overview,
@@ -139,6 +160,7 @@ async def dashboard_alerts_partial(
     context = get_template_context(
         request,
         user=user,
+        db=db,
         alerts=alerts,
     )
     return templates.TemplateResponse("partials/dashboard_alerts.html", context)
@@ -506,7 +528,7 @@ async def cotacoes_list_page(
         .all()
     )
     
-    context = get_template_context(request, user=user, cotacoes=cotacoes)
+    context = get_template_context(request, user=user, db=db, cotacoes=cotacoes)
     return templates.TemplateResponse("pages/cotacoes_list.html", context)
 
 
@@ -561,7 +583,8 @@ async def cotacoes_table_partial(
     
     context = get_template_context(
         request, 
-        user=user, 
+        user=user,
+        db=db,
         cotacoes=cotacoes,
         total_items=total_items,
         total_pages=total_pages,
@@ -588,6 +611,7 @@ async def enviar_cotacao(
         context = get_template_context(
             request,
             user=user,
+            db=db,
             cotacoes=[cotacao],
             flash_message="Cotação enviada com sucesso!",
             flash_type="success",
@@ -597,9 +621,9 @@ async def enviar_cotacao(
         return response
         
     except CotacaoNaoPodeSerEnviadaException as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
     except ValueError as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
 
 
 @web_router.post("/cotacoes/{cotacao_id}/aprovar", response_class=HTMLResponse)
@@ -618,6 +642,7 @@ async def aprovar_cotacao(
         context = get_template_context(
             request,
             user=user,
+            db=db,
             cotacoes=[cotacao],
             flash_message="Cotação aprovada com sucesso!",
             flash_type="success",
@@ -627,9 +652,9 @@ async def aprovar_cotacao(
         return response
         
     except CotacaoNaoPodeSerAprovadaException as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
     except ValueError as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
 
 
 @web_router.post("/cotacoes/{cotacao_id}/cancelar", response_class=HTMLResponse)
@@ -648,6 +673,7 @@ async def cancelar_cotacao(
         context = get_template_context(
             request,
             user=user,
+            db=db,
             cotacoes=[cotacao],
             flash_message="Cotação cancelada.",
             flash_type="warning",
@@ -657,9 +683,9 @@ async def cancelar_cotacao(
         return response
         
     except CotacaoNaoPodeSerEditadaException as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
     except ValueError as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
 
 
 # =============================================================================
@@ -680,6 +706,7 @@ async def pedidos_list_page(
     context = get_template_context(
         request, 
         user=user,
+        db=db,
         filters={"status": status, "periodo": periodo}
     )
     return templates.TemplateResponse("pages/pedidos_list.html", context)
@@ -728,7 +755,8 @@ async def pedidos_table_partial(
     
     context = get_template_context(
         request, 
-        user=user, 
+        user=user,
+        db=db,
         pedidos=pedidos,
         total_items=total_items,
         total_pages=total_pages,
@@ -762,9 +790,9 @@ async def criar_pedido_from_cotacao(
         return response
         
     except (CotacaoNaoAprovadaException, CotacaoSemItensException) as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
     except ValueError as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
 
 
 @web_router.get("/pedidos/{pedido_id}/details", response_class=HTMLResponse)
@@ -784,10 +812,55 @@ async def pedido_details_partial(
     )
     
     if not pedido:
-        return _flash_error(request, user, "Pedido não encontrado")
+        return _flash_error(request, user, "Pedido não encontrado", db=db)
     
-    context = get_template_context(request, user=user, pedido=pedido)
+    context = get_template_context(request, user=user, db=db, pedido=pedido)
     return templates.TemplateResponse("partials/pedido_details.html", context)
+
+
+@web_router.post("/pedidos/{pedido_id}/update-status", response_class=HTMLResponse)
+async def update_pedido_status(
+    request: Request,
+    pedido_id: UUID,
+    status: str = Form(...),
+    user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """Update pedido status."""
+    service = PedidoService(db)
+    
+    try:
+        pedido = service.atualizar_status_pedido(
+            pedido_id=pedido_id,
+            tenant_id=user.tenant_id,
+            novo_status=status,
+            usuario_id=user.id,
+        )
+        
+        # Reload table
+        tenant_id = user.tenant_id
+        query = db.query(Pedido).filter(Pedido.tenant_id == tenant_id)
+        total_items = query.count()
+        pedidos = query.order_by(Pedido.created_at.desc()).limit(20).all()
+        
+        context = get_template_context(
+            request,
+            user=user,
+            db=db,
+            pedidos=pedidos,
+            total_items=total_items,
+            total_pages=1,
+            current_page=1,
+            limit=20,
+            flash_message=f"Status atualizado para {status.replace('_', ' ').title()}.",
+            flash_type="success",
+        )
+        response = templates.TemplateResponse("partials/table_pedidos.html", context)
+        response.headers["HX-Trigger"] = "pedidoUpdated"
+        return response
+        
+    except ValueError as e:
+        return _flash_error(request, user, str(e), db=db)
 
 
 @web_router.post("/pedidos/{pedido_id}/cancelar", response_class=HTMLResponse)
@@ -803,10 +876,21 @@ async def cancelar_pedido(
     try:
         pedido = service.cancelar_pedido(pedido_id=pedido_id, tenant_id=user.tenant_id)
         
+        # Reload table
+        tenant_id = user.tenant_id
+        query = db.query(Pedido).filter(Pedido.tenant_id == tenant_id)
+        total_items = query.count()
+        pedidos = query.order_by(Pedido.created_at.desc()).limit(20).all()
+        
         context = get_template_context(
             request,
             user=user,
-            pedidos=[pedido],
+            db=db,
+            pedidos=pedidos,
+            total_items=total_items,
+            total_pages=1,
+            current_page=1,
+            limit=20,
             flash_message="Pedido cancelado.",
             flash_type="warning",
         )
@@ -815,9 +899,9 @@ async def cancelar_pedido(
         return response
         
     except PedidoNaoPodeSerCanceladoException as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
     except ValueError as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
 
 
 # =============================================================================
@@ -828,9 +912,10 @@ async def cancelar_pedido(
 async def insights_page(
     request: Request,
     user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
 ):
     """Insights hub page."""
-    context = get_template_context(request, user=user)
+    context = get_template_context(request, user=user, db=db)
     return templates.TemplateResponse("pages/insights.html", context)
 
 
@@ -950,6 +1035,7 @@ async def insights_estoque_partial(
     context = get_template_context(
         request,
         user=user,
+        db=db,
         stock_alerts=stock_alerts,
         replenishment_suggestions=replenishment_suggestions,
         has_more=has_more,
@@ -1043,6 +1129,7 @@ async def insights_precos_partial(
     context = get_template_context(
         request,
         user=user,
+        db=db,
         price_alerts=price_alerts,
         has_more=has_more,
         next_cursor=next_cursor,
@@ -1140,6 +1227,7 @@ async def insights_vendas_partial(
     context = get_template_context(
         request,
         user=user,
+        db=db,
         sales_suggestions=sales_suggestions,
         has_more=has_more,
         next_cursor=next_cursor,
@@ -1151,10 +1239,239 @@ async def insights_vendas_partial(
 async def insights_entregas_partial(
     request: Request,
     user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
 ):
     """Delivery insights partial."""
-    context = get_template_context(request, user=user)
+    context = get_template_context(request, user=user, db=db)
     return templates.TemplateResponse("partials/insights_entregas.html", context)
+
+
+# =============================================================================
+# Stock
+# =============================================================================
+
+@web_router.get("/stock", response_class=HTMLResponse)
+async def stock_page(
+    request: Request,
+    user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """Stock management page."""
+    context = get_template_context(request, user=user, db=db)
+    return templates.TemplateResponse("pages/stock.html", context)
+
+
+@web_router.get("/stock/table", response_class=HTMLResponse)
+async def stock_table_partial(
+    request: Request,
+    user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """HTMX partial: stock alerts and replenishment suggestions."""
+    tenant_id = user.tenant_id
+    
+    try:
+        from sqlalchemy import text
+        
+        # Get stock alerts
+        alerts_query = """
+            SELECT 
+                id, product_id, alert_type, risk_level, 
+                current_stock, minimum_stock, days_until_rupture,
+                explanation, status, created_at
+            FROM engine_stock_alerts
+            WHERE tenant_id = :tenant_id AND status = 'active'
+            ORDER BY created_at DESC LIMIT 10
+        """
+        alerts_result = db.execute(text(alerts_query), {"tenant_id": tenant_id})
+        stock_alerts_data = []
+        product_ids = set()
+        for row in alerts_result:
+            stock_alerts_data.append({
+                "id": str(row[0]),
+                "product_id": str(row[1]),
+                "alert_type": row[2],
+                "risk_level": row[3],
+                "current_stock": row[4],
+                "minimum_stock": row[5],
+                "days_until_rupture": row[6],
+                "explanation": row[7],
+            })
+            product_ids.add(UUID(str(row[1])))
+        
+        # Get replenishment suggestions
+        repl_query = """
+            SELECT 
+                id, product_id, suggested_quantity, current_stock,
+                minimum_stock, maximum_stock, priority,
+                explanation, status
+            FROM engine_replenishment_suggestions
+            WHERE tenant_id = :tenant_id AND status = 'pending'
+            ORDER BY created_at DESC LIMIT 10
+        """
+        repl_result = db.execute(text(repl_query), {"tenant_id": tenant_id})
+        replenishment_data = []
+        for row in repl_result:
+            replenishment_data.append({
+                "id": str(row[0]),
+                "product_id": str(row[1]),
+                "suggested_quantity": row[2],
+                "current_stock": row[3],
+                "priority": row[6],
+                "explanation": row[7],
+            })
+            product_ids.add(UUID(str(row[1])))
+        
+        # Fetch product names
+        produtos_map = {}
+        if product_ids:
+            produtos = db.query(Produto).filter(Produto.id.in_(product_ids), Produto.tenant_id == tenant_id).all()
+            produtos_map = {str(p.id): p for p in produtos}
+        
+        # Format alerts with product names
+        stock_alerts = []
+        for alert_data in stock_alerts_data:
+            produto = produtos_map.get(alert_data["product_id"])
+            alert_data["produto"] = produto
+            stock_alerts.append(alert_data)
+        
+        # Format replenishment with product names
+        replenishment_suggestions = []
+        for sugg_data in replenishment_data:
+            produto = produtos_map.get(sugg_data["product_id"])
+            sugg_data["produto"] = produto
+            replenishment_suggestions.append(sugg_data)
+        
+    except Exception as e:
+        logger.warning(f"Failed to fetch stock data: {e}", exc_info=True)
+        stock_alerts = []
+        replenishment_suggestions = []
+    
+    context = get_template_context(
+        request,
+        user=user,
+        db=db,
+        stock_alerts=stock_alerts,
+        replenishment_suggestions=replenishment_suggestions,
+    )
+    return templates.TemplateResponse("partials/stock_table.html", context)
+
+
+# =============================================================================
+# Suppliers
+# =============================================================================
+
+@web_router.get("/suppliers", response_class=HTMLResponse)
+async def suppliers_page(
+    request: Request,
+    user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """Suppliers management page."""
+    tenant_id = user.tenant_id
+    
+    fornecedores = (
+        db.query(Fornecedor)
+        .filter(Fornecedor.tenant_id == tenant_id)
+        .order_by(Fornecedor.nome)
+        .all()
+    )
+    
+    context = get_template_context(request, user=user, db=db, fornecedores=fornecedores)
+    return templates.TemplateResponse("pages/suppliers.html", context)
+
+
+@web_router.get("/suppliers/table", response_class=HTMLResponse)
+async def suppliers_table_partial(
+    request: Request,
+    user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """HTMX partial: suppliers table."""
+    tenant_id = user.tenant_id
+    
+    fornecedores = (
+        db.query(Fornecedor)
+        .filter(Fornecedor.tenant_id == tenant_id)
+        .order_by(Fornecedor.nome)
+        .all()
+    )
+    
+    context = get_template_context(request, user=user, db=db, fornecedores=fornecedores)
+    return templates.TemplateResponse("partials/suppliers_table.html", context)
+
+
+# =============================================================================
+# Customers
+# =============================================================================
+
+@web_router.get("/customers", response_class=HTMLResponse)
+async def customers_page(
+    request: Request,
+    user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """Customers management page."""
+    tenant_id = user.tenant_id
+    
+    clientes = (
+        db.query(Cliente)
+        .filter(Cliente.tenant_id == tenant_id)
+        .order_by(Cliente.nome)
+        .limit(100)
+        .all()
+    )
+    
+    context = get_template_context(request, user=user, db=db, clientes=clientes)
+    return templates.TemplateResponse("pages/customers.html", context)
+
+
+@web_router.get("/customers/{cliente_id}", response_class=HTMLResponse)
+async def customer_details_page(
+    request: Request,
+    cliente_id: UUID,
+    user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """Customer details page with history."""
+    tenant_id = user.tenant_id
+    
+    cliente = (
+        db.query(Cliente)
+        .filter(Cliente.id == cliente_id, Cliente.tenant_id == tenant_id)
+        .first()
+    )
+    
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    # Get recent cotacoes
+    cotacoes = (
+        db.query(Cotacao)
+        .filter(Cotacao.cliente_id == cliente_id, Cotacao.tenant_id == tenant_id)
+        .order_by(Cotacao.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    
+    # Get recent pedidos
+    pedidos = (
+        db.query(Pedido)
+        .filter(Pedido.cliente_id == cliente_id, Pedido.tenant_id == tenant_id)
+        .order_by(Pedido.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    
+    context = get_template_context(
+        request,
+        user=user,
+        db=db,
+        cliente=cliente,
+        cotacoes=cotacoes,
+        pedidos=pedidos,
+    )
+    return templates.TemplateResponse("pages/customer_details.html", context)
 
 
 # =============================================================================
@@ -1194,6 +1511,7 @@ async def cotacoes_new_page(
     context = get_template_context(
         request,
         user=user,
+        db=db,
         step=step,
         wizard_state=state,
         clientes=clientes,
@@ -1214,7 +1532,7 @@ async def cotacoes_new_step1(
     state = _get_wizard_state(user.id)
     
     if not cliente_id:
-        context = get_template_context(request, user=user, error="Cliente é obrigatório")
+        context = get_template_context(request, user=user, db=db, error="Cliente é obrigatório")
         return templates.TemplateResponse("pages/cotacoes_new.html", context, status_code=400)
     
     state["cliente_id"] = cliente_id
@@ -1234,7 +1552,7 @@ async def cotacoes_new_search_products(
 ):
     """Search products for wizard step 2."""
     if not q or len(q) < 2:
-        context = get_template_context(request, user=user, produtos=[], search_query=q)
+        context = get_template_context(request, user=user, db=db, produtos=[], search_query=q)
         return templates.TemplateResponse("partials/product_search_results.html", context)
     
     produtos = db.query(Produto).filter(
@@ -1247,7 +1565,7 @@ async def cotacoes_new_search_products(
         )
     ).order_by(Produto.nome).limit(10).all()
     
-    context = get_template_context(request, user=user, produtos=produtos, search_query=q)
+    context = get_template_context(request, user=user, db=db, produtos=produtos, search_query=q)
     return templates.TemplateResponse("partials/product_search_results.html", context)
 
 
@@ -1272,7 +1590,7 @@ async def cotacoes_new_add_item(
         ).first()
         
         if not produto:
-            return _flash_error(request, user, "Produto não encontrado ou inativo")
+            return _flash_error(request, user, "Produto não encontrado ou inativo", db=db)
         
         preco = Decimal(preco_unitario) if preco_unitario and Decimal(preco_unitario) > 0 else produto.preco_base
         qtd = Decimal(quantidade)
@@ -1307,7 +1625,7 @@ async def cotacoes_new_add_item(
         
         # Return updated summary (will update via hx-swap-oob)
         summary = _calculate_cotacao_summary(state, db, user.tenant_id)
-        context = get_template_context(request, user=user, wizard_state=state, summary=summary)
+        context = get_template_context(request, user=user, db=db, wizard_state=state, summary=summary)
         response = templates.TemplateResponse("partials/cotacao_summary.html", context)
         # Also update cart items via oob
         cart_response = templates.TemplateResponse("partials/cotacao_cart_items.html", context)
@@ -1317,7 +1635,7 @@ async def cotacoes_new_add_item(
         return response
         
     except (ValueError, TypeError) as e:
-        return _flash_error(request, user, f"Erro ao adicionar item: {str(e)}")
+        return _flash_error(request, user, f"Erro ao adicionar item: {str(e)}", db=db)
 
 
 @web_router.post("/cotacoes/new/remove-item", response_class=HTMLResponse)
@@ -1336,10 +1654,10 @@ async def cotacoes_new_remove_item(
             _save_wizard_state(user.id, state)
         
         summary = _calculate_cotacao_summary(state, db, user.tenant_id)
-        context = get_template_context(request, user=user, wizard_state=state, summary=summary)
+        context = get_template_context(request, user=user, db=db, wizard_state=state, summary=summary)
         return templates.TemplateResponse("partials/cotacao_summary.html", context)
     except (ValueError, IndexError):
-        return _flash_error(request, user, "Item não encontrado")
+        return _flash_error(request, user, "Item não encontrado", db=db)
 
 
 @web_router.post("/cotacoes/new/step3", response_class=HTMLResponse)
@@ -1353,7 +1671,7 @@ async def cotacoes_new_step3(
     state = _get_wizard_state(user.id)
     
     if not state.get("itens"):
-        return _flash_error(request, user, "Adicione pelo menos um item antes de continuar")
+        return _flash_error(request, user, "Adicione pelo menos um item antes de continuar", db=db)
     
     state["desconto_percentual"] = str(Decimal(desconto_percentual) if desconto_percentual else Decimal("0"))
     state["observacoes"] = observacoes
@@ -1374,10 +1692,10 @@ async def cotacoes_new_finalize(
     
     # Validate
     if not state.get("cliente_id"):
-        return _flash_error(request, user, "Cliente é obrigatório")
+        return _flash_error(request, user, "Cliente é obrigatório", db=db)
     
     if not state.get("itens"):
-        return _flash_error(request, user, "Adicione pelo menos um item")
+        return _flash_error(request, user, "Adicione pelo menos um item", db=db)
     
     try:
         service = CotacaoService(db)
@@ -1412,10 +1730,10 @@ async def cotacoes_new_finalize(
         return RedirectResponse(url=f"/web/cotacoes?created={cotacao.id}", status_code=302)
         
     except ValueError as e:
-        return _flash_error(request, user, str(e))
+        return _flash_error(request, user, str(e), db=db)
     except Exception as e:
         logger.error(f"Error creating cotação: {e}", exc_info=True)
-        return _flash_error(request, user, "Erro ao criar cotação. Tente novamente.")
+        return _flash_error(request, user, "Erro ao criar cotação. Tente novamente.", db=db)
 
 
 # =============================================================================
@@ -1427,11 +1745,13 @@ async def create_purchase_order_stub(
     request: Request,
     alert_id: UUID,
     user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
 ):
     """Stub endpoint: Create purchase order from alert."""
     context = get_template_context(
         request,
         user=user,
+        db=db,
         flash_message="Funcionalidade em desenvolvimento. Em breve você poderá gerar pedidos de compra automaticamente.",
         flash_type="info",
     )
@@ -1445,11 +1765,13 @@ async def adjust_price_stub(
     request: Request,
     alert_id: UUID,
     user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
 ):
     """Stub endpoint: Adjust price modal."""
     context = get_template_context(
         request,
         user=user,
+        db=db,
         flash_message="Funcionalidade em desenvolvimento. Em breve você poderá ajustar preços diretamente dos alertas.",
         flash_type="info",
     )
@@ -1463,11 +1785,13 @@ async def create_quotation_from_insight_stub(
     request: Request,
     insight_id: UUID,
     user: UserClaims = Depends(require_web_user),
+    db: Session = Depends(get_db),
 ):
     """Stub endpoint: Create quotation from insight."""
     context = get_template_context(
         request,
         user=user,
+        db=db,
         flash_message="Funcionalidade em desenvolvimento. Em breve você poderá criar cotações sugeridas automaticamente.",
         flash_type="info",
     )
@@ -1548,11 +1872,12 @@ def _calculate_cotacao_summary(state: dict[str, Any], db: Session, tenant_id: UU
 # Helpers
 # =============================================================================
 
-def _flash_error(request: Request, user: UserClaims, message: str) -> HTMLResponse:
+def _flash_error(request: Request, user: UserClaims, message: str, db: Optional[Session] = None) -> HTMLResponse:
     """Return a flash error partial."""
     context = get_template_context(
         request,
         user=user,
+        db=db,
         flash_message=message,
         flash_type="error",
     )

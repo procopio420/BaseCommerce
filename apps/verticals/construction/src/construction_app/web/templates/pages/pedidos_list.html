@@ -4,36 +4,36 @@
 
 {% block content %}
 <!-- Page Header -->
-<div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-900">Pedidos</h1>
-    <p class="mt-1 text-sm text-gray-500">Gerencie seus pedidos e entregas</p>
+<div class="page-header">
+    <h1 class="page-title">Pedidos</h1>
+    <p class="page-subtitle">Gerencie seus pedidos e entregas</p>
 </div>
 
 <!-- Filters -->
-<div class="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-    <form hx-get="/web/pedidos/table" hx-target="#pedidos-table" hx-trigger="change delay:300ms" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+<div class="card" style="margin-bottom: var(--spacing-6);">
+    <form hx-get="/web/pedidos/table" hx-target="#pedidos-table" hx-trigger="change delay:300ms" class="grid grid-cols-1 md:grid-cols-3" style="gap: var(--spacing-4);">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-input">
                 <option value="">Todos</option>
-                <option value="pendente" {% if filters.status == 'pendente' %}selected{% endif %}>Pendente</option>
-                <option value="em_preparacao" {% if filters.status == 'em_preparacao' %}selected{% endif %}>Em Preparação</option>
-                <option value="saiu_entrega" {% if filters.status == 'saiu_entrega' %}selected{% endif %}>Saiu para Entrega</option>
-                <option value="entregue" {% if filters.status == 'entregue' %}selected{% endif %}>Entregue</option>
-                <option value="cancelado" {% if filters.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                <option value="pendente" {% if filters and filters.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                <option value="em_preparacao" {% if filters and filters.status == 'em_preparacao' %}selected{% endif %}>Em Preparação</option>
+                <option value="saiu_entrega" {% if filters and filters.status == 'saiu_entrega' %}selected{% endif %}>Saiu para Entrega</option>
+                <option value="entregue" {% if filters and filters.status == 'entregue' %}selected{% endif %}>Entregue</option>
+                <option value="cancelado" {% if filters and filters.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
             </select>
         </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Período</label>
-            <select name="periodo" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Período</label>
+            <select name="periodo" class="form-input">
                 <option value="">Todos</option>
-                <option value="hoje" {% if filters.periodo == 'hoje' %}selected{% endif %}>Hoje</option>
-                <option value="semana" {% if filters.periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
-                <option value="mes" {% if filters.periodo == 'mes' %}selected{% endif %}>Este Mês</option>
+                <option value="hoje" {% if filters and filters.periodo == 'hoje' %}selected{% endif %}>Hoje</option>
+                <option value="semana" {% if filters and filters.periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
+                <option value="mes" {% if filters and filters.periodo == 'mes' %}selected{% endif %}>Este Mês</option>
             </select>
         </div>
-        <div class="flex items-end">
-            <button type="button" onclick="this.form.reset(); htmx.trigger(this.form, 'change')" class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200">
+        <div style="display: flex; align-items: flex-end;">
+            <button type="button" onclick="this.form.reset(); htmx.trigger(this.form, 'change')" class="btn btn-outline btn-full">
                 Limpar Filtros
             </button>
         </div>
@@ -42,7 +42,7 @@
 
 <!-- Pedidos Table -->
 <div id="pedidos-table" hx-get="/web/pedidos/table" hx-trigger="load, pedidoUpdated from:body">
-    {% include "partials/table_pedidos.html" %}
+    <div class="htmx-indicator">Carregando pedidos...</div>
 </div>
 
 <!-- Drawer Overlay -->

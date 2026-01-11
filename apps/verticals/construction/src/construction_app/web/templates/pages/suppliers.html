@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+
+{% block title %}Fornecedores - {{ tenant_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">Fornecedores</h1>
+    <p class="page-subtitle">Gerencie seus fornecedores e compare preços</p>
+</div>
+
+<!-- Suppliers Table -->
+<div id="suppliers-table" hx-get="/web/suppliers/table" hx-trigger="load">
+    <div class="htmx-indicator">Carregando fornecedores...</div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,48 @@
+{% if fornecedores %}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>CNPJ</th>
+                <th>Email</th>
+                <th>Telefone</th>
+                <th>Status</th>
+                <th style="text-align: right;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fornecedor in fornecedores %}
+            <tr id="fornecedor-{{ fornecedor.id }}">
+                <td>{{ fornecedor.nome }}</td>
+                <td class="text-muted">{{ fornecedor.documento or '-' }}</td>
+                <td class="text-muted">{{ fornecedor.email or '-' }}</td>
+                <td class="text-muted">{{ fornecedor.telefone or '-' }}</td>
+                <td>
+                    <span class="badge {% if fornecedor.ativo %}badge-aprovada{% else %}badge-cancelada{% endif %}">
+                        {{ 'Ativo' if fornecedor.ativo else 'Inativo' }}
+                    </span>
+                </td>
+                <td style="text-align: right;">
+                    <div class="actions">
+                        <a href="/web/suppliers/{{ fornecedor.id }}/compare" class="btn btn-outline btn-sm">
+                            Comparar Preços
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-title">Nenhum fornecedor encontrado</div>
+    <div class="empty-state-message">Comece adicionando seus fornecedores para comparar preços.</div>
+    <div class="empty-state-action">
+        <button class="btn btn-primary" disabled>Adicionar Fornecedor</button>
+        <span class="text-muted text-sm" style="display: block; margin-top: var(--spacing-2);">Funcionalidade em desenvolvimento</span>
+    </div>
+</div>
+{% endif %}
+

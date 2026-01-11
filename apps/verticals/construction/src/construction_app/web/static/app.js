@@ -1,75 +1,11 @@
 /**
  * BaseCommerce - App JavaScript
- * Minimal JS for tenant theming, toast notifications, and helpers
+ * Minimal JS for micro-interactions (toast, drawer, helpers)
+ * Note: Tenant theming is now handled server-side via template context
  */
 
 (function() {
     'use strict';
-
-    // =============================================================================
-    // Tenant Theming
-    // =============================================================================
-
-    /**
-     * Load tenant theme from /tenant.json and apply CSS variables
-     */
-    async function loadTenantTheme() {
-        try {
-            const response = await fetch('/tenant.json');
-            if (!response.ok) return;
-            
-            const tenant = await response.json();
-            
-            // Apply CSS variables
-            const root = document.documentElement;
-            if (tenant.primary_color) {
-                root.style.setProperty('--primary-color', tenant.primary_color);
-            }
-            if (tenant.secondary_color) {
-                root.style.setProperty('--secondary-color', tenant.secondary_color);
-            }
-            
-            // Update primary hover (calculated)
-            if (tenant.primary_color) {
-                const hoverColor = adjustColorBrightness(tenant.primary_color, -15);
-                root.style.setProperty('--primary-hover', hoverColor);
-            }
-            
-            // Update primary light (calculated)
-            if (tenant.primary_color) {
-                const lightColor = adjustColorBrightness(tenant.primary_color, 85);
-                root.style.setProperty('--primary-light', lightColor);
-            }
-            
-            // Update logo if exists
-            const logoImg = document.querySelector('#tenant-logo');
-            if (logoImg && tenant.logo_url) {
-                logoImg.src = tenant.logo_url;
-                logoImg.alt = tenant.name || 'Logo';
-            }
-            
-            // Update tenant name in title if exists
-            const tenantNameEl = document.querySelector('#tenant-name');
-            if (tenantNameEl && tenant.name) {
-                tenantNameEl.textContent = tenant.name;
-            }
-            
-        } catch (error) {
-            console.warn('Failed to load tenant theme:', error);
-        }
-    }
-
-    /**
-     * Adjust color brightness (simple implementation)
-     */
-    function adjustColorBrightness(hex, percent) {
-        const num = parseInt(hex.replace('#', ''), 16);
-        const amt = Math.round(2.55 * percent);
-        const R = Math.min(255, Math.max(0, (num >> 16) + amt));
-        const G = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
-        const B = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
-        return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
-    }
 
     // =============================================================================
     // Toast Notifications
@@ -235,14 +171,12 @@
     // Initialization
     // =============================================================================
 
-    // Load tenant theme on page load
+    // Setup drawer on page load
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            loadTenantTheme();
             setupDrawer();
         });
     } else {
-        loadTenantTheme();
         setupDrawer();
     }
 
@@ -252,7 +186,6 @@
         toggleSidebar,
         formatCurrency,
         formatDate,
-        loadTenantTheme,
         openDrawer,
         closeDrawer
     };

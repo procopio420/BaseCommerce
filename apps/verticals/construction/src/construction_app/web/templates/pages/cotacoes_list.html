@@ -4,53 +4,57 @@
 
 {% block content %}
 <!-- Page Header -->
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-3xl font-bold text-gray-900">Cotações</h1>
-        <p class="mt-1 text-sm text-gray-500">Gerencie seus orçamentos e cotações</p>
+<div class="page-header">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 class="page-title">Cotações</h1>
+            <p class="page-subtitle">Gerencie seus orçamentos e cotações</p>
+        </div>
+        <a href="/web/cotacoes/new" class="btn btn-primary">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Nova Cotação
+        </a>
     </div>
-    <a href="/web/cotacoes/new" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-hover">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Nova Cotação
-    </a>
 </div>
 
 <!-- Filters -->
-<div class="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-    <form hx-get="/web/cotacoes/table" hx-target="#cotacoes-table" hx-trigger="change delay:300ms" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+<div class="card" style="margin-bottom: var(--spacing-6);">
+    <form hx-get="/web/cotacoes/table" hx-target="#cotacoes-table" hx-trigger="change delay:300ms" class="grid grid-cols-1 md:grid-cols-4" style="gap: var(--spacing-4);">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-input">
                 <option value="">Todos</option>
-                <option value="rascunho" {% if filters.status == 'rascunho' %}selected{% endif %}>Rascunho</option>
-                <option value="enviada" {% if filters.status == 'enviada' %}selected{% endif %}>Enviada</option>
-                <option value="aprovada" {% if filters.status == 'aprovada' %}selected{% endif %}>Aprovada</option>
-                <option value="convertida" {% if filters.status == 'convertida' %}selected{% endif %}>Convertida</option>
-                <option value="cancelada" {% if filters.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                <option value="rascunho" {% if filters and filters.status == 'rascunho' %}selected{% endif %}>Rascunho</option>
+                <option value="enviada" {% if filters and filters.status == 'enviada' %}selected{% endif %}>Enviada</option>
+                <option value="aprovada" {% if filters and filters.status == 'aprovada' %}selected{% endif %}>Aprovada</option>
+                <option value="convertida" {% if filters and filters.status == 'convertida' %}selected{% endif %}>Convertida</option>
+                <option value="cancelada" {% if filters and filters.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
             </select>
         </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-            <select name="cliente_id" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Cliente</label>
+            <select name="cliente_id" class="form-input">
                 <option value="">Todos</option>
+                {% if clientes %}
                 {% for cliente in clientes %}
-                <option value="{{ cliente.id }}" {% if filters.cliente_id == cliente.id|string %}selected{% endif %}>{{ cliente.nome }}</option>
+                <option value="{{ cliente.id }}" {% if filters and filters.cliente_id == cliente.id|string %}selected{% endif %}>{{ cliente.nome }}</option>
                 {% endfor %}
+                {% endif %}
             </select>
         </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Período</label>
-            <select name="periodo" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Período</label>
+            <select name="periodo" class="form-input">
                 <option value="">Todos</option>
-                <option value="hoje" {% if filters.periodo == 'hoje' %}selected{% endif %}>Hoje</option>
-                <option value="semana" {% if filters.periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
-                <option value="mes" {% if filters.periodo == 'mes' %}selected{% endif %}>Este Mês</option>
+                <option value="hoje" {% if filters and filters.periodo == 'hoje' %}selected{% endif %}>Hoje</option>
+                <option value="semana" {% if filters and filters.periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
+                <option value="mes" {% if filters and filters.periodo == 'mes' %}selected{% endif %}>Este Mês</option>
             </select>
         </div>
-        <div class="flex items-end">
-            <button type="button" onclick="this.form.reset(); htmx.trigger(this.form, 'change')" class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200">
+        <div style="display: flex; align-items: flex-end;">
+            <button type="button" onclick="this.form.reset(); htmx.trigger(this.form, 'change')" class="btn btn-outline btn-full">
                 Limpar Filtros
             </button>
         </div>
@@ -59,6 +63,6 @@
 
 <!-- Cotações Table -->
 <div id="cotacoes-table" hx-get="/web/cotacoes/table" hx-trigger="load, cotacaoUpdated from:body">
-    {% include "partials/table_cotacoes.html" %}
+    <div class="htmx-indicator">Carregando cotações...</div>
 </div>
 {% endblock %}

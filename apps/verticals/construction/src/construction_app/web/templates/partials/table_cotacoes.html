@@ -6,104 +6,97 @@
 {% endif %}
 
 {% if cotacoes %}
-<div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for cotacao in cotacoes %}
-                <tr id="cotacao-{{ cotacao.id }}" class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="text-sm font-mono font-medium text-gray-900">{{ cotacao.numero or cotacao.id|string|truncate(8, True, '') }}</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="text-sm text-gray-900">{{ cotacao.cliente.nome if cotacao.cliente else '-' }}</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="text-sm font-medium text-gray-900">R$ {{ "%.2f"|format(cotacao.valor_total or 0) }}</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        {% set text = cotacao.status|capitalize %}
-                        {% set variant = cotacao.status %}
-                        {% include "partials/badge.html" %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ cotacao.created_at.strftime('%d/%m/%Y %H:%M') }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div class="flex items-center justify-end gap-2">
-                            {% if cotacao.status == 'rascunho' %}
-                            <button 
-                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-primary hover:bg-primary-hover"
-                                hx-post="/web/cotacoes/{{ cotacao.id }}/enviar"
-                                hx-target="#cotacoes-table"
-                                hx-swap="innerHTML"
-                            >
-                                Enviar
-                            </button>
-                            <button 
-                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                hx-post="/web/cotacoes/{{ cotacao.id }}/cancelar"
-                                hx-target="#cotacoes-table"
-                                hx-swap="innerHTML"
-                                hx-confirm="Tem certeza que deseja cancelar esta cotação?"
-                            >
-                                Cancelar
-                            </button>
-                            {% elif cotacao.status == 'enviada' %}
-                            <button 
-                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                                hx-post="/web/cotacoes/{{ cotacao.id }}/aprovar"
-                                hx-target="#cotacoes-table"
-                                hx-swap="innerHTML"
-                            >
-                                Aprovar
-                            </button>
-                            <button 
-                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                hx-post="/web/cotacoes/{{ cotacao.id }}/cancelar"
-                                hx-target="#cotacoes-table"
-                                hx-swap="innerHTML"
-                                hx-confirm="Tem certeza que deseja cancelar esta cotação?"
-                            >
-                                Cancelar
-                            </button>
-                            {% elif cotacao.status == 'aprovada' %}
-                            <button 
-                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-primary hover:bg-primary-hover"
-                                hx-post="/web/pedidos/from-cotacao/{{ cotacao.id }}"
-                                hx-confirm="Converter esta cotação em pedido?"
-                            >
-                                Converter em Pedido
-                            </button>
-                            {% else %}
-                            <span class="text-gray-400">-</span>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Data</th>
+                <th style="text-align: right;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cotacao in cotacoes %}
+            <tr id="cotacao-{{ cotacao.id }}">
+                <td>
+                    <span style="font-family: monospace; font-weight: var(--font-weight-medium);">{{ cotacao.numero or cotacao.id|string|truncate(8, True, '') }}</span>
+                </td>
+                <td>{{ cotacao.cliente.nome if cotacao.cliente else '-' }}</td>
+                <td>R$ {{ "%.2f"|format(cotacao.valor_total or 0) }}</td>
+                <td>
+                    <span class="badge badge-{{ cotacao.status }}">{{ cotacao.status|capitalize }}</span>
+                </td>
+                <td class="text-muted">{{ cotacao.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td style="text-align: right;">
+                    <div class="actions">
+                        {% if cotacao.status == 'rascunho' %}
+                        <button 
+                            class="btn btn-primary btn-sm"
+                            hx-post="/web/cotacoes/{{ cotacao.id }}/enviar"
+                            hx-target="#cotacoes-table"
+                            hx-swap="innerHTML"
+                        >
+                            Enviar
+                        </button>
+                        <button 
+                            class="btn btn-outline btn-sm"
+                            hx-post="/web/cotacoes/{{ cotacao.id }}/cancelar"
+                            hx-target="#cotacoes-table"
+                            hx-swap="innerHTML"
+                            hx-confirm="Tem certeza que deseja cancelar esta cotação?"
+                        >
+                            Cancelar
+                        </button>
+                        {% elif cotacao.status == 'enviada' %}
+                        <button 
+                            class="btn btn-success btn-sm"
+                            hx-post="/web/cotacoes/{{ cotacao.id }}/aprovar"
+                            hx-target="#cotacoes-table"
+                            hx-swap="innerHTML"
+                        >
+                            Aprovar
+                        </button>
+                        <button 
+                            class="btn btn-outline btn-sm"
+                            hx-post="/web/cotacoes/{{ cotacao.id }}/cancelar"
+                            hx-target="#cotacoes-table"
+                            hx-swap="innerHTML"
+                            hx-confirm="Tem certeza que deseja cancelar esta cotação?"
+                        >
+                            Cancelar
+                        </button>
+                        {% elif cotacao.status == 'aprovada' %}
+                        <button 
+                            class="btn btn-primary btn-sm"
+                            hx-post="/web/pedidos/from-cotacao/{{ cotacao.id }}"
+                            hx-confirm="Converter esta cotação em pedido?"
+                        >
+                            Converter em Pedido
+                        </button>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% if total_pages and total_pages > 1 %}
-{% set target_id = "cotacoes-table" url_path="/web/cotacoes/table" %}
+{% set target_id = "cotacoes-table" %}
+{% set url_path = "/web/cotacoes/table" %}
 {% include "partials/pagination_offset.html" %}
 {% endif %}
 {% else %}
-{% set title = "Nenhuma cotação encontrada" %}
-{% set message = "Comece criando sua primeira cotação." %}
-{% set cta_text = "Criar cotação" %}
-{% set cta_href = "/web/cotacoes/new" %}
-{% include "partials/empty_state.html" %}
+<div class="empty-state">
+    <div class="empty-state-title">Nenhuma cotação encontrada</div>
+    <div class="empty-state-message">Comece criando sua primeira cotação.</div>
+    <div class="empty-state-action">
+        <a href="/web/cotacoes/new" class="btn btn-primary">Criar cotação</a>
+    </div>
+</div>
 {% endif %}

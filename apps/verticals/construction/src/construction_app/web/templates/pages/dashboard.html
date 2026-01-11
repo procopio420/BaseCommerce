@@ -1,186 +1,209 @@
 {% extends "layout.html" %}
 
-{% block title %}Painel da {{ tenant_name }}{% endblock %}
+{% block title %}Dashboard - {{ tenant_name }}{% endblock %}
 
 {% block content %}
 <!-- Page Header -->
-<div class="mb-8">
-    <h1 class="text-3xl font-bold text-gray-900">Painel da {{ tenant_name }}</h1>
-    <p class="mt-2 text-gray-600">Bem-vindo, {{ user.nome }}! Aqui está o que precisa da sua atenção hoje.</p>
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Bem-vindo, {{ user.email }}! Aqui está o que precisa da sua atenção hoje.</p>
 </div>
 
 <!-- =============================================================================
-     BLOCO 1: ALERTAS DO DIA
+     BLOCO 1: ATENÇÃO DO DIA
      ============================================================================= -->
-<section class="mb-8">
-    {% set title = "Alertas do Dia" %}
-    {% include "partials/section_header.html" %}
-    <div id="alerts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {% if alerts %}
-        {% for alert in alerts %}
-            {% include "partials/alert_item.html" %}
-        {% endfor %}
-        {% else %}
-        {% set alert = {"severity": "info", "title": "Tudo certo!", "message": "Nenhum alerta crítico no momento. Seu estoque e preços estão dentro do esperado."} %}
-        {% include "partials/alert_item.html" %}
-        {% endif %}
+<section class="card" id="dashboard-alerts-section">
+    <div class="card-header">
+        <h2 class="card-title">Atenção do Dia</h2>
+    </div>
+    <div class="card-body">
+        <div id="alerts-container" 
+             hx-get="/web/dashboard/alerts" 
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML"
+             class="grid grid-auto-fit">
+            <!-- HTMX will load alerts here -->
+            <div class="htmx-indicator">Carregando alertas...</div>
+        </div>
     </div>
 </section>
 
 <!-- =============================================================================
-     BLOCO 2: AÇÕES RECOMENDADAS / ATALHOS RÁPIDOS
+     BLOCO 2: AÇÕES RECOMENDADAS
      ============================================================================= -->
-<section class="mb-8">
-    {% set title = "Atalhos Rápidos" %}
-    {% include "partials/section_header.html" %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {% set icon_doc = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>' %}
-        {% set title = "Criar novo orçamento" %}
-        {% set description = "Crie um orçamento para sua obra ou cliente" %}
-        {% set href = "/web/cotacoes/new" %}
-        {% set icon = icon_doc %}
-        {% set variant = "primary" %}
-        {% include "partials/quick_action.html" %}
-        
-        {% set icon_cart = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>' %}
-        {% set title = "Novo pedido" %}
-        {% set description = "Criar pedido a partir de cotação aprovada" %}
-        {% set href = "/web/pedidos/new" %}
-        {% set icon = icon_cart %}
-        {% set variant = "secondary" %}
-        {% include "partials/quick_action.html" %}
-        
-        {% set icon_box = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>' %}
-        {% set title = "Registrar estoque" %}
-        {% set description = "Registrar entrada de materiais" %}
-        {% set href = "/web/estoque/entrada" %}
-        {% set icon = icon_box %}
-        {% set variant = "success" %}
-        {% include "partials/quick_action.html" %}
-        
-        {% set icon_chart = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>' %}
-        {% set title = "Ver insights" %}
-        {% set description = "Análises e recomendações" %}
-        {% set href = "/web/insights" %}
-        {% set icon = icon_chart %}
-        {% set variant = "warning" %}
-        {% include "partials/quick_action.html" %}
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">Ações Recomendadas</h2>
     </div>
-</section>
-
-<!-- =============================================================================
-     BLOCO 3: VISÃO RÁPIDA DO NEGÓCIO
-     ============================================================================= -->
-<section class="mb-8">
-    {% set title = "Visão Rápida do Negócio" %}
-    {% include "partials/section_header.html" %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        {% set icon_money = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' %}
-        {% set label = "Vendas da Semana" %}
-        {% set value = business_overview.week_sales.formatted|default("R$ 0,00") %}
-        {% set description = "Pedidos entregues esta semana" %}
-        {% set icon = icon_money %}
-        {% include "partials/stat_card.html" %}
-        
-        {% set icon_doc = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>' %}
-        {% set orcamentos_por_status = business_overview.active_quotations.por_status|default({}) %}
-        {% if orcamentos_por_status %}
-            {% set status_list = [] %}
-            {% for status, count in orcamentos_por_status.items() %}
-                {% set _ = status_list.append(count ~ " " ~ status) %}
-            {% endfor %}
-            {% set orcamentos_text = status_list|join(", ") %}
-        {% else %}
-            {% set orcamentos_text = "Nenhum orçamento em andamento" %}
-        {% endif %}
-        {% set label = "Orçamentos Ativos" %}
-        {% set value = business_overview.active_quotations.total|default(0)|string %}
-        {% set description = orcamentos_text %}
-        {% set icon = icon_doc %}
-        {% include "partials/stat_card.html" %}
-        
-        {% set icon_box = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>' %}
-        {% set label = "Materiais Mais Movimentados" %}
-        {% set value = business_overview.top_products|length|string %}
-        {% set description = "Últimos 30 dias" %}
-        {% set icon = icon_box %}
-        {% include "partials/stat_card.html" %}
-    </div>
-
-    {% if business_overview.top_products %}
-    <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Top 5 Materiais Mais Vendidos</h3>
-        <div class="space-y-3">
-            {% for produto in business_overview.top_products %}
-            <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div>
-                    <p class="text-sm font-medium text-gray-900">{{ produto.nome }}</p>
-                    <p class="text-xs text-gray-500">{{ "%.2f"|format(produto.quantidade_total) }} {{ produto.unidade }}</p>
+    <div class="card-body">
+        {% if recommended_actions %}
+        <div class="grid grid-auto-fit">
+            {% for action in recommended_actions %}
+            <a href="{{ action.url }}" class="alert-card alert-{{ action.priority if action.priority != 'primary' else 'info' }}">
+                <div class="alert-icon">
+                    {% if action.icon == "document-text" %}
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    {% elif action.icon == "package" %}
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    {% elif action.icon == "currency-dollar" %}
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {% elif action.icon == "trending-up" %}
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    {% elif action.icon == "document-search" %}
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    {% endif %}
                 </div>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary-light text-primary">
-                    {{ produto.num_vendas }} venda(s)
-                </span>
-            </div>
+                <div class="alert-content">
+                    <div class="alert-title">{{ action.title }}</div>
+                    <div class="alert-message">{{ action.description }}</div>
+                </div>
+            </a>
             {% endfor %}
         </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-title">Nenhuma ação recomendada</div>
+            <div class="empty-state-message">Tudo está em ordem! Continue acompanhando seu negócio.</div>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </section>
 
 <!-- =============================================================================
-     BLOCO 4: FOCO EM MATERIAL DE CONSTRUÇÃO
+     BLOCO 3: KPIs
      ============================================================================= -->
-<section class="mb-8">
-    {% set title = "Materiais de Construção" %}
-    {% include "partials/section_header.html" %}
-    
-    {% if construction_materials.top_selling %}
-    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Materiais Mais Vendidos</h3>
-        <div class="flex flex-wrap gap-2">
-            {% for material in construction_materials.top_selling %}
-            <span class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-primary text-white">
-                {{ material.nome }}
-            </span>
-            {% endfor %}
-        </div>
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">Indicadores de Negócio</h2>
     </div>
-    {% endif %}
-
-    {% if construction_materials.stagnant %}
-    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Materiais Parados</h3>
-        <div class="space-y-2">
-            {% for material in construction_materials.stagnant %}
-            <div class="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <span class="text-sm font-medium text-yellow-800">{{ material.nome }}</span>
-                <span class="text-xs text-yellow-600">Sem venda há {{ material.dias_sem_venda }} dia(s)</span>
+    <div class="card-body">
+        <div class="grid grid-auto-fit">
+            <!-- Vendas da Semana -->
+            <div class="stat-card">
+                <div class="stat-card-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="stat-card-value">{{ business_overview.week_sales.formatted|default("R$ 0,00") }}</div>
+                <div class="stat-card-label">Vendas da Semana</div>
+                <div class="stat-card-change">Pedidos entregues esta semana</div>
             </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% else %}
-    <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <p class="text-sm text-gray-500">TODO: Implementar lista de materiais parados quando insights estiverem disponíveis.</p>
-    </div>
-    {% endif %}
 
-    {% if construction_materials.critical_items %}
-    <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Itens Críticos (Estoque Baixo)</h3>
-        <div class="space-y-2">
-            {% for item in construction_materials.critical_items %}
-            <div class="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-md">
-                <span class="text-sm font-medium text-red-800">{{ item.nome }}</span>
-                <span class="text-xs text-red-600">Estoque: {{ item.estoque_atual }} {{ item.unidade }} | Mínimo: {{ item.estoque_minimo }} {{ item.unidade }}</span>
+            <!-- Orçamentos Ativos -->
+            <div class="stat-card">
+                <div class="stat-card-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div class="stat-card-value">{{ business_overview.active_quotations.total|default(0) }}</div>
+                <div class="stat-card-label">Orçamentos Ativos</div>
+                <div class="stat-card-change">
+                    {% if business_overview.active_quotations.por_status %}
+                        {% for status, count in business_overview.active_quotations.por_status.items() %}
+                            {{ count }} {{ status }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        Nenhum em andamento
+                    {% endif %}
+                </div>
             </div>
-            {% endfor %}
+
+            <!-- Materiais Mais Movimentados -->
+            <div class="stat-card">
+                <div class="stat-card-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                </div>
+                <div class="stat-card-value">{{ business_overview.top_products|length|default(0) }}</div>
+                <div class="stat-card-label">Materiais em Destaque</div>
+                <div class="stat-card-change">Últimos 30 dias</div>
+            </div>
         </div>
     </div>
-    {% else %}
-    <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <p class="text-sm text-gray-500">TODO: Implementar lista de itens críticos usando insights de stock alerts quando disponíveis.</p>
+</section>
+
+<!-- =============================================================================
+     BLOCO 4: RECENTES
+     ============================================================================= -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">Recentes</h2>
     </div>
-    {% endif %}
+    <div class="card-body">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Cotações Recentes -->
+            <div>
+                <h3 class="text-sm font-semibold mb-3" style="color: var(--color-text-muted);">Cotações Recentes</h3>
+                <div 
+                    hx-get="/web/cotacoes/table?limit=5" 
+                    hx-trigger="load"
+                    hx-swap="innerHTML"
+                    class="htmx-indicator">
+                    Carregando...
+                </div>
+            </div>
+
+            <!-- Pedidos Recentes -->
+            <div>
+                <h3 class="text-sm font-semibold mb-3" style="color: var(--color-text-muted);">Pedidos Recentes</h3>
+                <div 
+                    hx-get="/web/pedidos/table?limit=5" 
+                    hx-trigger="load"
+                    hx-swap="innerHTML"
+                    class="htmx-indicator">
+                    Carregando...
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================================================
+     BLOCO 5: INSIGHTS
+     ============================================================================= -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">Insights</h2>
+    </div>
+    <div class="card-body">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Stock Insights -->
+            <div>
+                <h3 class="text-sm font-semibold mb-3" style="color: var(--color-text-muted);">Estoque</h3>
+                <div 
+                    hx-get="/web/insights/estoque?limit=3" 
+                    hx-trigger="load"
+                    hx-swap="innerHTML"
+                    class="htmx-indicator">
+                    Carregando insights de estoque...
+                </div>
+            </div>
+
+            <!-- Sales Insights -->
+            <div>
+                <h3 class="text-sm font-semibold mb-3" style="color: var(--color-text-muted);">Vendas</h3>
+                <div 
+                    hx-get="/web/insights/vendas?limit=3" 
+                    hx-trigger="load"
+                    hx-swap="innerHTML"
+                    class="htmx-indicator">
+                    Carregando insights de vendas...
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 {% endblock %}

@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ cliente.nome }} - {{ tenant_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 class="page-title">{{ cliente.nome }}</h1>
+            <p class="page-subtitle">Detalhes e histórico do cliente</p>
+        </div>
+        <a href="/web/customers" class="btn btn-outline">
+            Voltar
+        </a>
+    </div>
+</div>
+
+<!-- Customer Info -->
+<div class="card" style="margin-bottom: var(--spacing-6);">
+    <div class="card-header">
+        <h2 class="card-title">Informações</h2>
+    </div>
+    <div class="card-body">
+        <div class="grid grid-cols-1 md:grid-cols-2" style="gap: var(--spacing-4);">
+            <div>
+                <div class="text-sm" style="color: var(--color-text-muted); margin-bottom: var(--spacing-1);">CNPJ/CPF</div>
+                <div>{{ cliente.documento or '-' }}</div>
+            </div>
+            <div>
+                <div class="text-sm" style="color: var(--color-text-muted); margin-bottom: var(--spacing-1);">Email</div>
+                <div>{{ cliente.email or '-' }}</div>
+            </div>
+            <div>
+                <div class="text-sm" style="color: var(--color-text-muted); margin-bottom: var(--spacing-1);">Telefone</div>
+                <div>{{ cliente.telefone or '-' }}</div>
+            </div>
+            <div>
+                <div class="text-sm" style="color: var(--color-text-muted); margin-bottom: var(--spacing-1);">Endereço</div>
+                <div>{{ cliente.endereco or '-' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Cotacoes -->
+<div class="card" style="margin-bottom: var(--spacing-6);">
+    <div class="card-header">
+        <h2 class="card-title">Cotações Recentes</h2>
+    </div>
+    <div class="card-body">
+        {% if cotacoes %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cotacao in cotacoes %}
+                    <tr>
+                        <td><a href="/web/cotacoes">{{ cotacao.numero or cotacao.id|string|truncate(8, True, '') }}</a></td>
+                        <td>R$ {{ "%.2f"|format(cotacao.valor_total or 0) }}</td>
+                        <td><span class="badge badge-{{ cotacao.status }}">{{ cotacao.status|capitalize }}</span></td>
+                        <td class="text-muted">{{ cotacao.created_at.strftime('%d/%m/%Y') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-title">Nenhuma cotação</div>
+            <div class="empty-state-message">Este cliente ainda não possui cotações.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Pedidos -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Pedidos Recentes</h2>
+    </div>
+    <div class="card-body">
+        {% if pedidos %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in pedidos %}
+                    <tr>
+                        <td><a href="/web/pedidos">{{ pedido.numero or pedido.id|string|truncate(8, True, '') }}</a></td>
+                        <td>R$ {{ "%.2f"|format(pedido.valor_total or 0) }}</td>
+                        <td><span class="badge badge-{{ pedido.status }}">{{ pedido.status|replace('_', ' ')|title }}</span></td>
+                        <td class="text-muted">{{ pedido.created_at.strftime('%d/%m/%Y') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-title">Nenhum pedido</div>
+            <div class="empty-state-message">Este cliente ainda não possui pedidos.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

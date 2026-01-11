@@ -1,12 +1,16 @@
 """Web-specific dependencies for cookie-based authentication."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict, Any
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 
 from construction_app.core.security import decode_access_token
+from construction_app.core.database import get_db
+from construction_app.models.tenant import Tenant
+from construction_app.models.tenant_branding import TenantBranding
 
 
 @dataclass
@@ -107,3 +111,50 @@ def require_tenant(request: Request) -> UUID:
             detail="Tenant não identificado. Use um subdomínio válido.",
         )
     return tenant_id
+
+
+def get_current_tenant_context(
+    user: Optional[UserClaims] = None,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Get current tenant context (name, slug, branding) from database.
+    
+    Uses user.tenant_id to fetch Tenant and TenantBranding.
+    Returns defaults if tenant or branding not found.
+    """
+    # Default values
+    defaults = {
+        "name": "BaseCommerce",
+        "slug": "",
+        "logo_url": None,
+        "primary_color": "#1a73e8",
+        "secondary_color": "#ea4335",
+        "feature_flags": {},
+    }
+    
+    if not user:
+        return defaults
+    
+    # Fetch tenant
+    tenant = db.query(Tenant).filter(
+        Tenant.id == user.tenant_id,
+        Tenant.ativo == True,  # noqa: E712
+    ).first()
+    
+    if not tenant:
+        return defaults
+    
+    # Fetch branding
+    branding = db.query(TenantBranding).filter(
+        TenantBranding.tenant_id == user.tenant_id
+    ).first()
+    
+    return {
+        "name": tenant.nome,
+        "slug": tenant.slug,
+        "logo_url": branding.logo_url if branding else None,
+        "primary_color": branding.primary_color if branding else "#1a73e8",
+        "secondary_color": branding.secondary_color if branding else "#ea4335",
+        "feature_flags": branding.feature_flags if branding and branding.feature_flags else {},
+    }
