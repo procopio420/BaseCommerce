@@ -26,3 +26,4 @@ class Tenant(Base, BaseModelMixin):
     # Note: No relationships - Tenant is managed by auth service
 
 
+

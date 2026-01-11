@@ -300,3 +300,4 @@ window.BaseCommerce.formatDate(new Date()); // "01/01/2024"
 - [Jinja2 Template Documentation](https://jinja.palletsprojects.com/)
 
 
+

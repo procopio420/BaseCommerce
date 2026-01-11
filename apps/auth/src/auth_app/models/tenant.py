@@ -24,3 +24,4 @@ class Tenant(Base, BaseModelMixin):
 
 
 
+

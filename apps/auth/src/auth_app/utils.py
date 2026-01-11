@@ -17,3 +17,4 @@ def generate_random_password(length: int = 12) -> str:
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
+
