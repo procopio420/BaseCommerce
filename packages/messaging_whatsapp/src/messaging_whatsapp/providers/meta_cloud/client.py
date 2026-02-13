@@ -564,3 +564,6 @@ class MetaCloudWhatsAppProvider(WhatsAppProvider):
         }
         return mapping.get(type_str, MessageType.UNKNOWN)
 
+
+
+

@@ -252,3 +252,6 @@ class TemplateRegistry:
 # Global template registry instance
 template_registry = TemplateRegistry()
 
+
+
+

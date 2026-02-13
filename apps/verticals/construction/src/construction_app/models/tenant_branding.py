@@ -30,3 +30,6 @@ class TenantBranding(Base, BaseModelMixin):
 
     # Note: No relationships - TenantBranding is managed by auth service
 
+
+
+

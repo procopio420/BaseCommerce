@@ -356,3 +356,6 @@ class StubWhatsAppProvider(WhatsAppProvider):
         """Clear sent messages history (for testing)."""
         self.sent_messages.clear()
 
+
+
+

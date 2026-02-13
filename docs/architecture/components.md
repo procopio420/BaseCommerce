@@ -1,14 +1,8 @@
-# BaseCommerce - Visao Geral da Plataforma
+# System Components
 
-## O que e
+Platform components and their responsibilities.
 
-BaseCommerce e uma **plataforma SaaS multi-tenant** para verticais de comercio. A primeira vertical implementada e para lojas de materiais de construcao no Brasil.
-
-## Arquitetura em uma frase
-
-> Verticais publicam eventos → Engines horizontais consomem → Dados ficam isolados por tenant.
-
-## Componentes
+## Component Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -25,13 +19,13 @@ BaseCommerce e uma **plataforma SaaS multi-tenant** para verticais de comercio. 
 │   ├── Web HTMX (/web/*)                                         │
 │   └── Domain (cotacoes, pedidos, clientes, produtos)            │
 │                                                                  │
-│   Futuras: alimentacao, varejo, etc.                            │
+│   Future: food, retail, etc.                                    │
 └─────────────────────────────────────────────────────────────────┘
                               │
-                              │ Eventos (Outbox Pattern)
+                              │ Events (Outbox Pattern)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    INFRA DE EVENTOS                              │
+│                    EVENT INFRASTRUCTURE                          │
 │                                                                  │
 │   Outbox Relay (DB → Redis Streams)                             │
 │   Redis Streams (Event Bus)                                      │
@@ -40,55 +34,85 @@ BaseCommerce e uma **plataforma SaaS multi-tenant** para verticais de comercio. 
                               │ XREADGROUP
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                  ENGINES HORIZONTAIS                             │
+│                  HORIZONTAL ENGINES                              │
 │                                                                  │
-│   Stock Intelligence    - O QUE/QUANDO/QUANTO comprar           │
-│   Sales Intelligence    - Sugestoes de venda                     │
-│   Pricing & Supplier    - DE QUEM comprar, A QUE CUSTO          │
-│   Delivery & Fulfillment - Pedido → Entrega → Confirmacao        │
+│   Stock Intelligence    - WHAT/WHEN/HOW MUCH to buy              │
+│   Sales Intelligence    - Sales suggestions                     │
+│   Pricing & Supplier    - FROM WHOM to buy, AT WHAT COST        │
+│   Delivery & Fulfillment - Order → Delivery → Confirmation      │
 │                                                                  │
-│   Escrevem em engine-owned tables, NAO importam verticais       │
+│   Write to engine-owned tables, do NOT import verticals         │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      POSTGRESQL                                  │
-│              Multi-tenant por tenant_id em todas as tabelas     │
+│              Multi-tenant by tenant_id in all tables            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Regras de Ouro
-
-1. **Verticais NAO importam engines** - comunicacao via eventos
-2. **Engines NAO importam verticais** - so usam basecore + engines_core
-3. **Tenant e resolvido pelo Nginx** - header X-Tenant-Slug
-4. **Eventos sao a unica comunicacao** - outbox pattern garante entrega
-5. **VPS-only** - sem k8s, sem serverless
-
-## Estrutura de Pastas
+## Directory Structure
 
 ```
 basecommerce/
 ├── apps/
-│   ├── auth/                    # Servico de auth (placeholder)
-│   ├── engines/                 # Worker que consome eventos
+│   ├── auth/                    # Auth service
+│   ├── engines/                 # Event consumer worker
 │   ├── outbox-relay/            # Relay DB → Redis Streams
 │   └── verticals/
-│       └── construction/        # Vertical de materiais
+│       └── construction/        # Construction materials vertical
 ├── packages/
-│   ├── basecore/               # Infra compartilhada
-│   └── engines_core/           # Logica dos engines
+│   ├── basecore/               # Shared infrastructure
+│   └── engines_core/           # Engine logic
 ├── infra/
-│   └── nginx/                  # Config Nginx multi-tenant
-└── docs/                       # Esta documentacao
+│   └── nginx/                  # Multi-tenant Nginx config
+└── docs/                       # Documentation
 ```
 
-## Proximos Passos
+## Component Responsibilities
 
-- [Arquitetura detalhada](01_architecture.md)
-- [Setup local](03_dev_setup.md)
-- [Deploy em producao](04_deploy.md)
-- [Multi-tenancy](05_multi_tenant.md)
-- [Eventos e Engines](06_events_and_engines.md)
-- [Escalabilidade](07_scalability.md)
+### Nginx
+- Subdomain extraction and tenant routing
+- Header injection (X-Tenant-Slug)
+- Reverse proxy to Auth Service and Verticals
+- Rate limiting and security
 
+### Auth Service
+- User authentication (JWT generation)
+- Tenant and user management
+- Tenant branding configuration
+- `/tenant.json` endpoint for frontend
+
+### Verticals
+- Domain-specific business logic
+- REST API endpoints (`/api/v1/*`)
+- HTMX web interface (`/web/*`)
+- Event publishing (Outbox Pattern)
+
+### Outbox Relay
+- Polls `event_outbox` table
+- Publishes events to Redis Streams
+- Ensures reliable event delivery
+
+### Redis Streams
+- Event bus for async communication
+- Consumer groups for parallel processing
+- Message persistence and replay
+
+### Engines Worker
+- Consumes events from Redis Streams
+- Routes to appropriate engine handlers
+- Writes to engine-owned tables
+- Idempotent processing
+
+### Engines
+- **Stock Intelligence**: Inventory management and reorder suggestions
+- **Sales Intelligence**: Cross-sell and upsell recommendations
+- **Pricing & Supplier**: Supplier comparison and cost optimization
+- **Delivery & Fulfillment**: Order fulfillment and delivery tracking
+
+### PostgreSQL
+- Source of truth for all business data
+- Row-level tenant isolation
+- Event outbox table
+- Engine-owned tables

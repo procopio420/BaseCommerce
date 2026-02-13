@@ -35,3 +35,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 # Run with uvicorn
 CMD ["python", "-m", "uvicorn", "whatsapp_webhook.main:app", "--host", "0.0.0.0", "--port", "8090"]
 
+
+
+

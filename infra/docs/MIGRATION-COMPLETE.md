@@ -88,3 +88,6 @@ Os scripts em `/opt/basecommerce/scripts/` nos droplets (bootstrap.sh, update.sh
 
 
 
+
+
+

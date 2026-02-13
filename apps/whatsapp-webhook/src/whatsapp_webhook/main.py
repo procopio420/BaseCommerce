@@ -23,10 +23,15 @@ from basecore.logging import setup_logging
 from basecore.redis import get_redis_client
 
 from messaging_whatsapp.providers.base import WhatsAppProvider
+from messaging_whatsapp.providers.evolution import EvolutionWhatsAppProvider
+from messaging_whatsapp.providers.evolution.webhook import (
+    extract_instance_name as extract_evolution_instance,
+    validate_api_key as validate_evolution_api_key,
+)
 from messaging_whatsapp.providers.meta_cloud import MetaCloudWhatsAppProvider
 from messaging_whatsapp.providers.meta_cloud.webhook import extract_phone_number_id, validate_signature
 from messaging_whatsapp.providers.stub import StubWhatsAppProvider
-from messaging_whatsapp.routing.tenant_resolver import TenantResolver
+from messaging_whatsapp.routing.tenant_resolver import TenantResolver, resolve_from_webhook_payload
 from messaging_whatsapp.streams.groups import ensure_whatsapp_streams
 from messaging_whatsapp.streams.producer import WhatsAppStreamProducer
 
@@ -106,28 +111,43 @@ async def verify_webhook(
     raise HTTPException(status_code=403, detail="Verification failed")
 
 
+def detect_provider(payload: dict[str, Any], request_headers: dict[str, str]) -> str:
+    """
+    Detect which provider sent the webhook.
+
+    Args:
+        payload: Parsed webhook payload
+        request_headers: Request headers
+
+    Returns:
+        Provider name: "meta", "evolution", or "unknown"
+    """
+    # Meta Cloud API format
+    if payload.get("object") == "whatsapp_business_account":
+        return "meta"
+
+    # Evolution API format
+    if payload.get("event") or payload.get("instance"):
+        return "evolution"
+
+    return "unknown"
+
+
 @app.post("/webhook")
 async def receive_webhook(request: Request):
     """
-    Receive webhook from Meta Cloud API.
+    Receive webhook from WhatsApp providers (Meta Cloud API or Evolution API).
 
     Flow:
-    1. Validate signature (if app secret configured)
-    2. Parse payload
-    3. Extract phone_number_id for tenant resolution
-    4. Resolve tenant
+    1. Detect provider from payload
+    2. Validate signature/api key
+    3. Parse payload
+    4. Resolve tenant (by phone_number_id or instance_name)
     5. Publish to Redis Stream
     6. Return 200 immediately
     """
     # Get raw body for signature validation
     body = await request.body()
-
-    # Validate signature if app secret is configured
-    if WHATSAPP_APP_SECRET and WHATSAPP_PROVIDER == "meta":
-        signature = request.headers.get("X-Hub-Signature-256", "")
-        if not validate_signature(body, signature, WHATSAPP_APP_SECRET):
-            logger.warning("Invalid webhook signature")
-            raise HTTPException(status_code=403, detail="Invalid signature")
 
     # Parse payload
     try:
@@ -136,31 +156,64 @@ async def receive_webhook(request: Request):
         logger.warning("Invalid JSON payload")
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    # Quick validation - only process WhatsApp webhooks
-    if payload.get("object") != "whatsapp_business_account":
-        logger.debug(f"Ignoring non-WhatsApp webhook: {payload.get('object')}")
-        return {"status": "ignored", "reason": "not_whatsapp"}
+    # Detect provider
+    provider_type = detect_provider(payload, dict(request.headers))
 
-    # Extract phone_number_id for tenant resolution
-    phone_number_id = extract_phone_number_id(payload)
-    if not phone_number_id:
-        logger.warning("No phone_number_id in webhook payload")
-        return {"status": "ignored", "reason": "no_phone_number_id"}
+    if provider_type == "unknown":
+        logger.debug(f"Unknown webhook format: {payload.keys()}")
+        return {"status": "ignored", "reason": "unknown_provider"}
+
+    # Validate based on provider
+    if provider_type == "meta":
+        # Validate Meta signature
+        if WHATSAPP_APP_SECRET:
+            signature = request.headers.get("X-Hub-Signature-256", "")
+            if not validate_signature(body, signature, WHATSAPP_APP_SECRET):
+                logger.warning("Invalid Meta webhook signature")
+                raise HTTPException(status_code=403, detail="Invalid signature")
+
+    elif provider_type == "evolution":
+        # Validate Evolution API key (if configured globally)
+        # Note: Evolution API can also validate per-instance, but we check here
+        evolution_api_key = os.getenv("EVOLUTION_API_KEY")
+        if evolution_api_key:
+            if not validate_evolution_api_key(dict(request.headers), evolution_api_key):
+                logger.warning("Invalid Evolution API key")
+                raise HTTPException(status_code=403, detail="Invalid API key")
 
     # Resolve tenant
     db = next(get_db())
     try:
-        resolver = TenantResolver(db)
-        binding = resolver.resolve_from_phone_number_id(phone_number_id)
+        tenant_id, binding = resolve_from_webhook_payload(db, payload)
 
-        if not binding:
-            logger.warning(f"No tenant binding for phone_number_id: {phone_number_id}")
+        if not binding or not tenant_id:
+            logger.warning("Could not resolve tenant from webhook")
             return {"status": "ignored", "reason": "no_binding"}
 
-        tenant_id = binding.tenant_id
+        # Get provider for this binding
+        if binding.provider == "meta":
+            provider = MetaCloudWhatsAppProvider()
+        elif binding.provider == "evolution":
+            # Get API key from binding
+            api_key = binding.api_key or ""
+            encryption_key = os.getenv("WHATSAPP_ENCRYPTION_KEY")
+            if encryption_key and api_key:
+                try:
+                    from cryptography.fernet import Fernet
+                    f = Fernet(encryption_key.encode())
+                    api_key = f.decrypt(api_key.encode()).decode()
+                except Exception as e:
+                    logger.warning(f"Failed to decrypt Evolution API key: {e}")
+
+            provider = EvolutionWhatsAppProvider(
+                api_url=binding.api_url or "",
+                api_key=api_key,
+                instance_name=binding.instance_name or "",
+            )
+        else:
+            provider = StubWhatsAppProvider()
 
         # Parse webhook to get messages and statuses
-        provider = get_provider()
         messages, statuses = provider.parse_webhook(payload)
 
         # Publish to Redis Stream
@@ -210,6 +263,7 @@ async def receive_webhook(request: Request):
 
         return {
             "status": "accepted",
+            "provider": provider_type,
             "messages": len(messages),
             "statuses": len(statuses),
         }

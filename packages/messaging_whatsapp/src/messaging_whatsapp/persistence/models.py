@@ -62,26 +62,37 @@ class WhatsAppModelMixin:
 
 class WhatsAppTenantBinding(WhatsAppBase, WhatsAppModelMixin):
     """
-    Maps a tenant to a WhatsApp Business phone number.
+    Maps a tenant to a WhatsApp provider (Meta Cloud API or Evolution API).
 
-    Each tenant can have multiple WhatsApp numbers.
-    The phone_number_id is used to route incoming webhooks to the correct tenant.
+    Each tenant can have multiple WhatsApp bindings.
+    The phone_number_id (Meta) or instance_name (Evolution) is used to route incoming webhooks.
     """
 
     __tablename__ = "whatsapp_tenant_bindings"
 
-    provider = Column(String(50), nullable=False, default="meta")  # meta, stub
-    phone_number_id = Column(String(100), nullable=False)  # From Meta API
-    waba_id = Column(String(100), nullable=False)  # WhatsApp Business Account ID
+    provider = Column(String(50), nullable=False, default="meta")  # meta, evolution, stub
+    
+    # Meta Cloud API fields
+    phone_number_id = Column(String(100), nullable=True)  # From Meta API (nullable for Evolution)
+    waba_id = Column(String(100), nullable=True)  # WhatsApp Business Account ID (nullable for Evolution)
+    access_token_encrypted = Column(Text, nullable=True)  # Encrypted access token (Meta)
+    webhook_verify_token = Column(String(100), nullable=True)  # For webhook verification (Meta)
+    
+    # Evolution API fields
+    instance_name = Column(String(100), nullable=True)  # Evolution instance name
+    api_key = Column(Text, nullable=True)  # Evolution API key (encrypted)
+    api_url = Column(String(255), nullable=True)  # Evolution API base URL
+    
+    # Common fields
     display_number = Column(String(20), nullable=False)  # Human-readable number
-    access_token_encrypted = Column(Text, nullable=True)  # Encrypted access token
-    webhook_verify_token = Column(String(100), nullable=True)  # For webhook verification
     is_active = Column(Boolean, nullable=False, default=True)
     config = Column(JSONB, nullable=False, default=dict)  # Provider-specific config
 
     __table_args__ = (
         UniqueConstraint("phone_number_id", name="uq_whatsapp_bindings_phone_number_id"),
+        UniqueConstraint("instance_name", name="uq_whatsapp_bindings_instance_name"),
         Index("idx_whatsapp_bindings_tenant_active", "tenant_id", "is_active"),
+        Index("idx_whatsapp_bindings_provider", "provider"),
     )
 
 

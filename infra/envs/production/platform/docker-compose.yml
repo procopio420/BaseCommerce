@@ -87,6 +87,57 @@ services:
     networks:
       - infra-network
 
+  whatsapp-webhook:
+    build:
+      context: .
+      dockerfile: apps/whatsapp-webhook/Dockerfile
+    container_name: basecommerce-whatsapp-webhook
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-basecommerce}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-basecommerce}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-stub}
+    ports:
+      - "${WHATSAPP_WEBHOOK_PORT:-8090}:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - infra-network
+
+  whatsapp-worker:
+    build:
+      context: .
+      dockerfile: apps/whatsapp-worker/Dockerfile
+    container_name: basecommerce-whatsapp-worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-basecommerce}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-basecommerce}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-stub}
+      WHATSAPP_ENCRYPTION_KEY: ${WHATSAPP_ENCRYPTION_KEY}
+      WHATSAPP_CONSUMER_NAME: ${WHATSAPP_CONSUMER_NAME:-worker-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - infra-network
+
 volumes:
   postgres_data:
   redis_data:

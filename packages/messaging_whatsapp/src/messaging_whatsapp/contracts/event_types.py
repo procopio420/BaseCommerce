@@ -46,3 +46,6 @@ VERTICAL_EVENTS_TO_NOTIFY = {
     "delivery_completed": "delivery_completed_template",
 }
 
+
+
+

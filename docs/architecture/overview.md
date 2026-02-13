@@ -1,10 +1,8 @@
-# Arquitetura do Sistema
+# Architecture Overview
 
-## Visao Geral
+BaseCommerce is a multi-tenant, multi-vertical SaaS platform for commerce. Each vertical (e.g., construction materials) has its own application that consumes reusable horizontal engines.
 
-Plataforma SaaS multi-tenant e multi-vertical para comercio. Cada vertical (ex: materiais de construcao) tem sua propria aplicacao que consume engines horizontais reutilizaveis.
-
-## Diagrama Logico
+## Logical Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -57,143 +55,151 @@ Plataforma SaaS multi-tenant e multi-vertical para comercio. Cada vertical (ex: 
 │   │ Intelligence   │                                            │
 │   └────────────────┘                                            │
 │                                                                  │
-│   - Consomem eventos via Redis Streams                          │
-│   - Escrevem em engine-owned tables                              │
-│   - NAO importam codigo de verticais                             │
+│   - Consume events via Redis Streams                            │
+│   - Write to engine-owned tables                                │
+│   - Do NOT import vertical code                                 │
 └────────────────────────────────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      PostgreSQL                                  │
-│                 (Multi-tenant por tenant_id)                     │
+│                 (Multi-tenant by tenant_id)                      │
 │                                                                  │
-│   - Tabelas de auth (tenants, users, tenant_branding)           │
-│   - Tabelas de verticais (cotacoes, pedidos, etc.)              │
-│   - Tabelas de engines (engine_*, sugestoes, alertas)            │
-│   - Event outbox para Outbox Pattern                             │
+│   - Auth tables (tenants, users, tenant_branding)              │
+│   - Vertical tables (cotacoes, pedidos, etc.)                   │
+│   - Engine tables (engine_*, suggestions, alerts)               │
+│   - Event outbox for Outbox Pattern                             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Core Principles
+
+1. **Verticals do NOT import engines** - Communication via events only
+2. **Engines do NOT import verticals** - Only use basecore + engines_core
+3. **Tenant resolved by Nginx** - X-Tenant-Slug header
+4. **Events are the only communication** - Outbox Pattern ensures delivery
+5. **VPS-only** - No Kubernetes, no serverless
+
 ## Auth Service
 
-O Auth Service e centralizado e responsavel por:
+The Auth Service is centralized and responsible for:
 
-- **Autenticacao**: Login/logout via JWT
-- **Tenant Resolution**: Endpoint `/tenant.json` retorna branding do tenant
-- **User Management**: Modelos Tenant, User, TenantBranding
+- **Authentication**: Login/logout via JWT
+- **Tenant Resolution**: Endpoint `/tenant.json` returns tenant branding
+- **User Management**: Tenant, User, TenantBranding models
 
 ### Endpoints
 
-| Endpoint | Metodo | Descricao |
-|----------|--------|-----------|
-| `/auth/login` | GET | Pagina de login (HTML) |
-| `/auth/login` | POST | Login JSON, retorna JWT |
-| `/auth/login/form` | POST | Login form, set cookie |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/auth/login` | GET | Login page (HTML) |
+| `/auth/login` | POST | Login JSON, returns JWT |
+| `/auth/login/form` | POST | Login form, sets cookie |
 | `/auth/logout` | GET | Clear cookie, redirect |
 | `/auth/me` | GET | User info (Bearer/cookie) |
 | `/tenant.json` | GET | Branding (via X-Tenant-Slug) |
-| `/auth/validate` | GET | Valida token |
+| `/auth/validate` | GET | Validate token |
 
-### Fluxo de Login
+### Login Flow
 
 ```
-1. Usuario acessa /web/dashboard
-2. Nginx redireciona /web/login → /auth/login
-3. Auth Service renderiza pagina de login
-4. Usuario submete form para /auth/login/form
-5. Auth Service valida credenciais
-6. Auth Service cria JWT com claims:
+1. User accesses /web/dashboard
+2. Nginx redirects /web/login → /auth/login
+3. Auth Service renders login page
+4. User submits form to /auth/login/form
+5. Auth Service validates credentials
+6. Auth Service creates JWT with claims:
    - sub: user_id
    - tenant_id: tenant_id
    - email: user_email
    - role: user_role
-7. Auth Service seta cookie httponly
-8. Redirect para /web/dashboard
-9. Vertical extrai claims do JWT (sem query ao banco)
+7. Auth Service sets httponly cookie
+8. Redirect to /web/dashboard
+9. Vertical extracts claims from JWT (no database query)
 ```
 
-## Principais Entidades
+## Domain Entities
 
-### Tenant (Loja)
-- Representa uma loja ou empresa cliente
-- Cada tenant tem isolamento completo de dados
-- Resolvido via subdomain (ex: `loja.basecommerce.com.br`)
-- **Gerenciado pelo Auth Service**
+### Tenant (Store)
+- Represents a store or client company
+- Each tenant has complete data isolation
+- Resolved via subdomain (e.g., `store.basecommerce.com.br`)
+- **Managed by Auth Service**
 
 ### User
-- Usuario dentro de um tenant
-- Roles: admin, vendedor
-- **Gerenciado pelo Auth Service**
+- User within a tenant
+- Roles: admin, vendedor (salesperson)
+- **Managed by Auth Service**
 
-### Cliente
-- PF (Pessoa Fisica) ou PJ (Pessoa Juridica)
-- Vinculado a um tenant
-- Pode ter multiplas obras
+### Cliente (Customer)
+- PF (Individual) or PJ (Company)
+- Linked to a tenant
+- Can have multiple obras (construction sites)
 
-### Obra (Opcional)
-- Vinculada a um cliente
-- Permite precos diferenciados por obra
+### Obra (Construction Site - Optional)
+- Linked to a customer
+- Allows differentiated pricing per site
 
-### Produto
-- Catalogo de produtos da loja
-- Preco base por produto
-- Vinculado ao tenant
+### Produto (Product)
+- Store product catalog
+- Base price per product
+- Linked to tenant
 
-### Cotacao
-- Lista de produtos com quantidades
-- Regras de preco aplicadas
-- Status: rascunho → enviada → aprovada → convertida
-- Historico versionado
+### Cotacao (Quote)
+- List of products with quantities
+- Price rules applied
+- Status: draft → sent → approved → converted
+- Versioned history
 
-### Pedido
-- Convertido de uma cotacao
-- Representa um pedido confirmado
-- Status de entrega basico
+### Pedido (Order)
+- Converted from a quote
+- Represents a confirmed order
+- Basic delivery status
 
-## Fluxo de Dados
+## Data Flow
 
-1. **Criacao de Cotacao**
-   - Seleciona cliente (e opcionalmente obra)
-   - Adiciona produtos com quantidades
-   - Aplica regras de preco (desconto)
-   - Salva como rascunho
+1. **Quote Creation**
+   - Select customer (and optionally obra)
+   - Add products with quantities
+   - Apply price rules (discount)
+   - Save as draft
 
-2. **Envio de Cotacao**
-   - Marca status como "enviada"
-   - Cliente visualiza (futuro)
+2. **Quote Sending**
+   - Mark status as "sent"
+   - Customer views (future feature)
 
-3. **Aprovacao**
-   - Cliente aprova (manual ou futuro sistema)
+3. **Approval**
+   - Customer approves (manual or future system)
 
-4. **Conversao em Pedido**
-   - Um clique converte cotacao aprovada em pedido
-   - Pedido herda todos os itens da cotacao
-   - Evento emitido para engines (via outbox)
+4. **Order Conversion**
+   - One-click converts approved quote to order
+   - Order inherits all quote items
+   - Event emitted to engines (via outbox)
 
-## Multi-tenant
+## Multi-Tenancy
 
-**Estrategia**: Subdomain + JWT Claims + Middleware
+**Strategy**: Subdomain + JWT Claims + Middleware
 
-- Nginx resolve subdomain e injeta `X-Tenant-Slug` header
-- Auth Service resolve tenant do header e gera JWT
-- JWT contem `tenant_id` nos claims
-- Vertical extrai `tenant_id` do JWT (sem query ao banco)
-- Todas as queries sao filtradas por `tenant_id`
+- Nginx resolves subdomain and injects `X-Tenant-Slug` header
+- Auth Service resolves tenant from header and generates JWT
+- JWT contains `tenant_id` in claims
+- Vertical extracts `tenant_id` from JWT (no database query)
+- All queries filtered by `tenant_id`
 
 ## Event-Driven Architecture
 
-**Padrao**: Outbox Pattern + Redis Streams
+**Pattern**: Outbox Pattern + Redis Streams
 
-1. Vertical escreve evento na tabela `event_outbox` (mesma transacao)
-2. Outbox Relay faz polling e publica no Redis Streams
-3. Engines consomem via XREADGROUP (consumer groups)
-4. Idempotencia garantida via `engine_processed_events`
+1. Vertical writes event to `event_outbox` table (same transaction)
+2. Outbox Relay polls and publishes to Redis Streams
+3. Engines consume via XREADGROUP (consumer groups)
+4. Idempotency guaranteed via `engine_processed_events`
 
-## Seguranca
+## Security
 
-- JWT para autenticacao (criado pelo Auth Service)
+- JWT for authentication (created by Auth Service)
 - Tenant isolation via JWT claims
-- Validacao de dados em todas as entradas
-- Cookies HttpOnly para web
-- HTTPS em producao
-- Auth Service centraliza gestao de usuarios
+- Data validation on all inputs
+- HttpOnly cookies for web
+- HTTPS in production
+- Auth Service centralizes user management

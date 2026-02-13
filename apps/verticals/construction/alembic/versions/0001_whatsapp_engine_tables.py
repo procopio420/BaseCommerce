@@ -160,3 +160,6 @@ def downgrade():
     op.drop_table('whatsapp_conversations')
     op.drop_table('whatsapp_tenant_bindings')
 
+
+
+

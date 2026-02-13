@@ -29,3 +29,6 @@ whatsapp-cli = "messaging_whatsapp.cli.main:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+
+
+

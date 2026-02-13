@@ -7,3 +7,6 @@ Fully independent from verticals - communicates only via Redis Streams.
 
 __version__ = "1.0.0"
 
+
+
+

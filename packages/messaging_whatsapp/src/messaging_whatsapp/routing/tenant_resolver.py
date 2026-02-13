@@ -33,9 +33,7 @@ class TenantResolver:
         phone_number_id: str,
     ) -> WhatsAppTenantBinding | None:
         """
-        Resolve tenant binding from WhatsApp phone number ID.
-
-        This is the primary method for incoming webhooks.
+        Resolve tenant binding from WhatsApp phone number ID (Meta Cloud API).
 
         Args:
             phone_number_id: WhatsApp Business phone number ID from webhook
@@ -56,6 +54,36 @@ class TenantResolver:
         else:
             logger.warning(
                 f"No tenant binding found for phone_number_id: {phone_number_id}"
+            )
+
+        return binding
+
+    def resolve_from_instance_name(
+        self,
+        instance_name: str,
+    ) -> WhatsAppTenantBinding | None:
+        """
+        Resolve tenant binding from Evolution API instance name.
+
+        Args:
+            instance_name: Evolution API instance name from webhook
+
+        Returns:
+            Tenant binding if found and active, None otherwise
+        """
+        binding = self.repo.get_binding_by_instance_name(instance_name)
+
+        if binding:
+            logger.debug(
+                f"Resolved tenant from instance_name",
+                extra={
+                    "instance_name": instance_name,
+                    "tenant_id": str(binding.tenant_id),
+                },
+            )
+        else:
+            logger.warning(
+                f"No tenant binding found for instance_name: {instance_name}"
             )
 
         return binding
@@ -126,38 +154,50 @@ def resolve_from_webhook_payload(
     """
     Convenience function to resolve tenant from webhook payload.
 
+    Supports both Meta Cloud API and Evolution API webhook formats.
+
     Args:
         db: Database session
-        payload: Webhook payload (Meta format)
+        payload: Webhook payload (Meta or Evolution format)
 
     Returns:
         Tuple of (tenant_id, binding) or (None, None) if not resolved
     """
-    # Extract phone_number_id from payload
-    phone_number_id = None
+    resolver = TenantResolver(db)
 
-    try:
-        for entry in payload.get("entry", []):
-            for change in entry.get("changes", []):
-                value = change.get("value", {})
-                metadata = value.get("metadata", {})
-                phone_number_id = metadata.get("phone_number_id")
+    # Detect provider by payload structure
+    # Meta Cloud API: {"object": "whatsapp_business_account", "entry": [...]}
+    # Evolution API: {"event": "...", "instance": "...", "data": {...}}
+
+    if payload.get("object") == "whatsapp_business_account":
+        # Meta Cloud API format
+        phone_number_id = None
+        try:
+            for entry in payload.get("entry", []):
+                for change in entry.get("changes", []):
+                    value = change.get("value", {})
+                    metadata = value.get("metadata", {})
+                    phone_number_id = metadata.get("phone_number_id")
+                    if phone_number_id:
+                        break
                 if phone_number_id:
                     break
-            if phone_number_id:
-                break
-    except Exception:
-        pass
+        except Exception:
+            pass
 
-    if not phone_number_id:
-        logger.warning("Could not extract phone_number_id from webhook payload")
-        return None, None
+        if phone_number_id:
+            binding = resolver.resolve_from_phone_number_id(phone_number_id)
+            if binding:
+                return binding.tenant_id, binding
 
-    resolver = TenantResolver(db)
-    binding = resolver.resolve_from_phone_number_id(phone_number_id)
+    elif payload.get("instance") or payload.get("event"):
+        # Evolution API format
+        instance_name = payload.get("instance")
+        if instance_name:
+            binding = resolver.resolve_from_instance_name(instance_name)
+            if binding:
+                return binding.tenant_id, binding
 
-    if binding:
-        return binding.tenant_id, binding
-
+    logger.warning("Could not resolve tenant from webhook payload")
     return None, None
 

@@ -2,7 +2,7 @@
 WhatsApp Providers
 
 Provider implementations for different WhatsApp APIs.
-Supports Meta Cloud API (production) and Stub (development).
+Supports Meta Cloud API, Evolution API, and Stub (development).
 """
 
 from messaging_whatsapp.providers.base import (

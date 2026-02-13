@@ -256,3 +256,6 @@ class WhatsAppStreamConsumer:
         message_ids = [p["message_id"] for p in pending]
         return self.claim_messages(stream_name, message_ids, min_idle_ms)
 
+
+
+

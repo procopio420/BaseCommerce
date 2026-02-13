@@ -152,3 +152,6 @@ class OptOutPayload(BaseModel):
     timestamp: datetime = Field(..., description="Opt-out timestamp")
     conversation_id: UUID | None = Field(None, description="Conversation ID")
 
+
+
+

@@ -1,16 +1,16 @@
-# Eventos e Engines
+# Event-Driven Architecture
 
-## Arquitetura Event-Driven
+The platform uses the **Outbox Pattern** to ensure reliable event delivery.
 
-A plataforma usa **Outbox Pattern** para garantir entrega de eventos:
+## Event Flow
 
 ```
 Vertical (write)
       │
       ▼
 ┌─────────────────┐
-│  Mesma transacao │
-│  - INSERT pedido │
+│  Same transaction│
+│  - INSERT order  │
 │  - INSERT outbox │
 │  COMMIT          │
 └────────┬────────┘
@@ -23,29 +23,29 @@ Vertical (write)
          │
          ▼
 ┌─────────────────┐
-│  Redis Streams   │
-│  (event bus)     │
+│  Redis Streams  │
+│  (event bus)    │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│  Engines Worker  │
+│  Engines Worker │
 │  (XREADGROUP)    │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│  Engine Tables   │
-│  (engine-owned)  │
+│  Engine Tables  │
+│  (engine-owned) │
 └─────────────────┘
 ```
 
-## Publicando Eventos (Vertical)
+## Publishing Events (Vertical)
 
 ```python
 from construction_app.platform.events.publisher import publish_event
 
-# Na mesma transacao do write principal
+# In the same transaction as the main write
 with db.begin():
     pedido = Pedido(...)
     db.add(pedido)
@@ -61,12 +61,12 @@ with db.begin():
             "valor_total": float(pedido.valor_total),
         }
     )
-    # COMMIT acontece aqui - ambos ou nenhum
+    # COMMIT happens here - both or neither
 ```
 
-## Consumindo Eventos (Engines)
+## Consuming Events (Engines)
 
-O worker em `apps/engines/` consome eventos via Redis Streams:
+The worker in `apps/engines/` consumes events via Redis Streams:
 
 ```python
 # engines_core/consumer.py
@@ -81,56 +81,56 @@ messages = read_from_stream(
 
 for msg_id, data in messages:
     envelope = parse_stream_message(msg_id, data)
-    result = handle_event(db, envelope)  # Roteia para handler
+    result = handle_event(db, envelope)  # Routes to handler
     ack_message(stream_name, group_name, msg_id)
 ```
 
-## Tipos de Eventos
+## Event Types
 
-| Evento | Quando | Payload |
-|--------|--------|---------|
-| `quote_created` | Cotacao criada | cotacao_id, cliente_id, itens |
-| `quote_converted` | Cotacao → Pedido | cotacao_id, pedido_id |
-| `sale_recorded` | Pedido criado | pedido_id, itens, valor |
-| `order_delivered` | Pedido entregue | pedido_id, data_entrega |
+| Event | When | Payload |
+|-------|------|---------|
+| `quote_created` | Quote created | quote_id, cliente_id, items |
+| `quote_converted` | Quote → Order | quote_id, pedido_id |
+| `sale_recorded` | Order created | pedido_id, items, valor_total |
+| `order_delivered` | Order delivered | pedido_id, delivery_date |
 
-## Engines Disponiveis
+## Available Engines
 
 ### Stock Intelligence
 
-**Responsabilidade**: O QUE comprar, QUANDO comprar, QUANTO comprar
+**Responsibility**: WHAT to buy, WHEN to buy, HOW MUCH to buy
 
-- Consome: `sale_recorded`, `order_delivered`
-- Produz: Alertas de ruptura, sugestoes de reposicao
-- Tabelas: `engine_stock_*`
+- Consumes: `sale_recorded`, `order_delivered`
+- Produces: Stockout alerts, reorder suggestions
+- Tables: `engine_stock_*`
 
 ### Sales Intelligence
 
-**Responsabilidade**: Aumentar valor da venda
+**Responsibility**: Increase sale value
 
-- Consome: `sale_recorded`, `quote_created`
-- Produz: Sugestoes de produtos complementares
-- Tabelas: `engine_sales_*`
+- Consumes: `sale_recorded`, `quote_created`
+- Produces: Complementary product suggestions
+- Tables: `engine_sales_*`
 
 ### Pricing & Supplier Intelligence
 
-**Responsabilidade**: DE QUEM comprar, A QUE CUSTO
+**Responsibility**: FROM WHOM to buy, AT WHAT COST
 
-- Consome: Eventos de fornecedor (futuro)
-- Produz: Comparacao de fornecedores, custo base
-- Tabelas: `engine_pricing_*`
+- Consumes: Supplier events (future)
+- Produces: Supplier comparison, base cost
+- Tables: `engine_pricing_*`
 
 ### Delivery & Fulfillment
 
-**Responsabilidade**: Pedido → Entrega → Confirmacao
+**Responsibility**: Order → Delivery → Confirmation
 
-- Consome: `order_delivered`
-- Produz: Rotas, status, prova de entrega
-- Tabelas: `engine_delivery_*`
+- Consumes: `order_delivered`
+- Produces: Routes, status, delivery proof
+- Tables: `engine_delivery_*`
 
-## Idempotencia
+## Idempotency
 
-Eventos sao processados de forma idempotente:
+Events are processed idempotently:
 
 ```sql
 CREATE TABLE engine_processed_events (
@@ -142,39 +142,39 @@ CREATE TABLE engine_processed_events (
 );
 ```
 
-Antes de processar:
+Before processing:
 ```python
 if is_event_processed(db, event_id):
-    return  # Skip - ja processado
+    return  # Skip - already processed
 
-# Processa...
+# Process...
 
 mark_event_processed(db, event_id, tenant_id, event_type, result)
 ```
 
-## Regras de Isolamento
+## Isolation Rules
 
-1. **Engines NAO importam verticais**
+1. **Engines do NOT import verticals**
    ```python
-   # ERRADO
+   # WRONG
    from construction_app.models import Pedido
    
-   # CERTO
+   # CORRECT
    from engines_core.contracts.envelope import EventEnvelope
    from basecore.db import get_db
    ```
 
-2. **Engines usam apenas**:
+2. **Engines use only**:
    - `packages/basecore/` (db, redis, settings)
    - `packages/engines_core/` (handlers, contracts)
 
-3. **Dados de engines em tabelas proprias**:
-   - Prefixo `engine_*`
-   - Nunca modificam tabelas de verticais
+3. **Engine data in own tables**:
+   - Prefix `engine_*`
+   - Never modify vertical tables
 
 ## Debugging
 
-### Ver eventos pendentes
+### View pending events
 
 ```sql
 SELECT * FROM event_outbox 
@@ -183,7 +183,7 @@ ORDER BY created_at DESC
 LIMIT 10;
 ```
 
-### Ver eventos processados por engines
+### View events processed by engines
 
 ```sql
 SELECT * FROM engine_processed_events 
@@ -191,9 +191,8 @@ ORDER BY processed_at DESC
 LIMIT 10;
 ```
 
-### Logs do worker
+### Worker logs
 
 ```bash
 docker-compose logs -f engines-worker
 ```
-

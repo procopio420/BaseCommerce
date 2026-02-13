@@ -34,11 +34,22 @@ class WhatsAppRepository:
     # =========================================================================
 
     def get_binding_by_phone_number_id(self, phone_number_id: str) -> WhatsAppTenantBinding | None:
-        """Get tenant binding by WhatsApp phone number ID."""
+        """Get tenant binding by WhatsApp phone number ID (Meta Cloud API)."""
         return (
             self.db.query(WhatsAppTenantBinding)
             .filter(
                 WhatsAppTenantBinding.phone_number_id == phone_number_id,
+                WhatsAppTenantBinding.is_active == True,  # noqa: E712
+            )
+            .first()
+        )
+
+    def get_binding_by_instance_name(self, instance_name: str) -> WhatsAppTenantBinding | None:
+        """Get tenant binding by Evolution API instance name."""
+        return (
+            self.db.query(WhatsAppTenantBinding)
+            .filter(
+                WhatsAppTenantBinding.instance_name == instance_name,
                 WhatsAppTenantBinding.is_active == True,  # noqa: E712
             )
             .first()
@@ -66,15 +77,22 @@ class WhatsAppRepository:
     def create_binding(
         self,
         tenant_id: UUID,
-        phone_number_id: str,
-        waba_id: str,
         display_number: str,
         provider: str = "meta",
+        phone_number_id: str | None = None,
+        waba_id: str | None = None,
         access_token_encrypted: str | None = None,
         webhook_verify_token: str | None = None,
+        instance_name: str | None = None,
+        api_url: str | None = None,
+        api_key: str | None = None,
         config: dict[str, Any] | None = None,
     ) -> WhatsAppTenantBinding:
-        """Create a new tenant binding."""
+        """
+        Create a new tenant binding.
+
+        Supports both Meta Cloud API and Evolution API providers.
+        """
         binding = WhatsAppTenantBinding(
             tenant_id=tenant_id,
             provider=provider,
@@ -83,6 +101,9 @@ class WhatsAppRepository:
             display_number=display_number,
             access_token_encrypted=access_token_encrypted,
             webhook_verify_token=webhook_verify_token,
+            instance_name=instance_name,
+            api_url=api_url,
+            api_key=api_key,
             config=config or {},
         )
         self.db.add(binding)
